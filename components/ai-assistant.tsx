@@ -7,24 +7,31 @@ import { useState, useRef, useEffect } from "react";
 import { Sparkles, X, Send } from "lucide-react";
 
 type Msg = { role: "user" | "aino"; text: string };
-
-const SUGGESTIONS = [
-  "What should I focus on?",
-  "Any at-risk deals?",
-  "How do I apply a discount?",
-  "How's the forecast looking?",
-];
+type Action = { label: string; prompt: string };
 
 export function AiAssistant() {
   const [open, setOpen] = useState(false);
-  const [msgs, setMsgs] = useState<Msg[]>([
-    { role: "aino", text: "Hi, I'm Aino — your analyst. Ask about your accounts, deals, pipeline, or how to use the CRM." },
-  ]);
+  const [msgs, setMsgs] = useState<Msg[]>([]);
+  const [actions, setActions] = useState<Action[]>([]);
+  const [greeted, setGreeted] = useState(false);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs, open]);
+
+  // On first open, fetch a personalised greeting + proactive, data-driven work suggestions.
+  useEffect(() => {
+    if (!open || greeted) return;
+    setGreeted(true);
+    fetch("/api/ai/assistant")
+      .then((r) => r.json())
+      .then((d) => {
+        setMsgs([{ role: "aino", text: d.greeting ?? "Hi — how can I help?" }]);
+        setActions(Array.isArray(d.actions) ? d.actions : []);
+      })
+      .catch(() => setMsgs([{ role: "aino", text: "Hi — ask me about your accounts, deals, or pipeline." }]));
+  }, [open, greeted]);
 
   async function send(question: string) {
     const q = question.trim();
@@ -86,9 +93,10 @@ export function AiAssistant() {
 
       {msgs.length <= 1 && (
         <div className="flex flex-wrap gap-1.5 px-4 pb-2">
-          {SUGGESTIONS.map((s) => (
-            <button key={s} onClick={() => send(s)} className="rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted">{s}</button>
+          {actions.map((a) => (
+            <button key={a.label} onClick={() => send(a.prompt)} className="rounded-full border border-primary/30 bg-primary/5 px-2.5 py-1 text-xs text-foreground hover:bg-primary/10">{a.label}</button>
           ))}
+          <button onClick={() => send("How do I use this CRM?")} className="rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted">How do I use this?</button>
         </div>
       )}
 

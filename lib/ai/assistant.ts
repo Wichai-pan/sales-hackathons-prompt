@@ -56,17 +56,67 @@ const HELP = `How the CRM works (for guidance answers):
 - See the forecast: Finance/Manager dashboards (3-year, device vs service, stage-weighted).
 - Notifications are in-app (bell, top-right).`;
 
+export interface AinoAction { label: string; prompt: string }
+
+/** A personalised greeting + proactive, data-driven WORK suggestions shown when the panel opens. */
+export async function assistantGreeting(opts: { userId: string; role: Role; name: string }): Promise<{ greeting: string; actions: AinoAction[] }> {
+  const first = opts.name.split(" ")[0];
+  const actions: AinoAction[] = [];
+  let situational = "";
+
+  if (opts.role === "REP") {
+    const [deals, pending] = await Promise.all([
+      prisma.deal.findMany({ where: { ownerRepId: opts.userId, status: "OPEN" }, include: { account: true } }),
+      prisma.offer.count({ where: { createdById: opts.userId, status: { in: ["PENDING_SM", "PENDING_FINANCE"] } } }),
+    ]);
+    const atRisk = deals
+      .filter((d) => daysSince(d.lastActivityAt) >= 14 || (d.expectedCloseDate && d.expectedCloseDate.getTime() < Date.now()))
+      .sort((a, b) => daysSince(b.lastActivityAt) - daysSince(a.lastActivityAt));
+    situational = `you have ${atRisk.length} at-risk deal${atRisk.length === 1 ? "" : "s"}${pending ? ` and ${pending} offer${pending === 1 ? "" : "s"} in approval` : ""}.`;
+    if (atRisk[0]) actions.push({ label: `Follow up: ${atRisk[0].name}`, prompt: `How should I follow up on the deal "${atRisk[0].name}" at ${atRisk[0].account.name}? Draft a short email.` });
+    if (pending) actions.push({ label: "Check offers in approval", prompt: "What's the status of my offers in approval and what should I do about them?" });
+    actions.push({ label: "Plan my day", prompt: "What are the top 3 things I should do today, most urgent first?" });
+  } else if (opts.role === "SALES_MANAGER") {
+    const [stalled, pendingSM] = await Promise.all([stalledDeals(), prisma.offer.count({ where: { status: "PENDING_SM" } })]);
+    situational = `${stalled.length} stalled deal${stalled.length === 1 ? "" : "s"} need attention${pendingSM ? ` and ${pendingSM} offer${pendingSM === 1 ? "" : "s"} awaiting your approval` : ""}.`;
+    if (pendingSM) actions.push({ label: "Review approvals", prompt: "Which offers are waiting for my approval and should I approve them?" });
+    if (stalled[0]) actions.push({ label: `Unstick: ${stalled[0].name}`, prompt: `The deal "${stalled[0].name}" is stalled — what should I do and who should own it?` });
+    actions.push({ label: "Where's my gap to target?", prompt: "What's my committed vs at-risk vs gap to target, and how do I close the gap?" });
+  } else if (opts.role === "FINANCE") {
+    const pendingFin = await prisma.offer.count({ where: { status: "PENDING_FINANCE" } });
+    situational = pendingFin ? `${pendingFin} discounted offer${pendingFin === 1 ? "" : "s"} need${pendingFin === 1 ? "s" : ""} your second approval.` : `the pipeline forecast is ready for you.`;
+    if (pendingFin) actions.push({ label: "Review Finance approvals", prompt: "Which offers need my Finance approval and are the discounts justified?" });
+    actions.push({ label: "Pipeline health", prompt: "Summarise the 3-year weighted pipeline health and the biggest risk." });
+    actions.push({ label: "Plan my day", prompt: "What are the top 3 things I should do today?" });
+  } else {
+    // TAM
+    const cases = await prisma.case.findMany({ where: { assignedTamId: opts.userId, status: { not: "CLOSED" } } });
+    const overdue = cases.filter((c) => c.dueDate && c.dueDate.getTime() < Date.now());
+    situational = `you have ${cases.length} open case${cases.length === 1 ? "" : "s"}${overdue.length ? `, ${overdue.length} past SLA` : ""}.`;
+    const worst = [...cases].sort((a, b) => (b.priority === "CRITICAL" ? 1 : 0) - (a.priority === "CRITICAL" ? 1 : 0))[0];
+    if (worst) actions.push({ label: `Tackle: ${worst.title}`, prompt: `What should I do about the case "${worst.title}"? Summarise where it stands and the next step.` });
+    actions.push({ label: "My day", prompt: "Which cases should I work first today, most urgent first?" });
+  }
+
+  return {
+    greeting: `Hi ${first} 👋 — ${situational} Where do you want to start?`,
+    actions: actions.slice(0, 4),
+  };
+}
+
 export async function askAino(question: string, opts: { userId: string; role: Role; name: string }): Promise<{ answer: string; source: "ai" | "fallback" }> {
   const snap = await snapshot(opts.userId, opts.role);
 
   const ai = await aiText({
     system:
       `You are "Aino", the AI analyst built into HMD Secure's CRM. The user is ${opts.name} (role: ${opts.role}). ` +
-      `Answer their question concisely and CONCRETELY using the live data snapshot below, or guide them on how to use the CRM. ` +
-      `Prefer specific names/numbers from the snapshot. 1-4 sentences, plain prose, no markdown.\n\n` +
+      `Talk to them like a proactive colleague who already knows their book of business — lead with WHAT TO DO, not how the tool works. ` +
+      `Answer concisely and CONCRETELY using the live data snapshot below, naming specific deals/cases/accounts and numbers. ` +
+      `If they ask what to do / to plan their day / where to start, give a SHORT PRIORITISED list (most urgent first, ~3 items) of concrete next actions tied to specific records. ` +
+      `Only explain how-to steps if they explicitly ask how. 1-4 sentences (or a tight 3-item list), plain prose, no markdown.\n\n` +
       `LIVE DATA:\n${snap}\n\n${HELP}`,
     user: question,
-    maxTokens: 260,
+    maxTokens: 280,
   });
   if (ai) return { answer: ai, source: "ai" };
 

@@ -1,7 +1,14 @@
-// POST /api/ai/assistant — ask "Aino" a question; answered with the current user's live data.
+// /api/ai/assistant — GET = personalised greeting + proactive actions; POST = ask Aino a question.
 import { NextResponse } from "next/server";
 import { currentUser } from "@/lib/session";
-import { askAino } from "@/lib/ai/assistant";
+import { askAino, assistantGreeting } from "@/lib/ai/assistant";
+
+export async function GET() {
+  const user = await currentUser();
+  if (!user) return NextResponse.json({ greeting: "Pick a demo user first (top-right → Switch role).", actions: [] });
+  const { greeting, actions } = await assistantGreeting({ userId: user.id, role: user.role, name: user.name });
+  return NextResponse.json({ greeting, actions });
+}
 
 export async function POST(req: Request) {
   const user = await currentUser();
