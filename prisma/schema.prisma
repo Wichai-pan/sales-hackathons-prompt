@@ -192,6 +192,7 @@ model Deal {
   expectedCloseDate DateTime?
   lastActivityAt  DateTime   @default(now())
   status          DealStatus @default(OPEN)
+  serviceModel    InvoicingModel @default(MONTHLY_RECURRING) // how this deal's service revenue is recognised (2.2): one-off / fixed-term spread / monthly-recurring on device trajectory
   notes           String?
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt

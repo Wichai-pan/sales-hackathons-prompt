@@ -42,7 +42,7 @@ export default async function DealPage({ params }: { params: Promise<{ id: strin
           <h1 className="text-2xl font-semibold">{deal.name}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {deal.channel === "RESELLER" ? <Badge variant="outline">Reseller</Badge> : <Badge variant="secondary">Direct</Badge>}{" "}
-            · {STAGE_LABEL[deal.stage]} · {deal.probability}% · owner {deal.ownerRep.name}
+            · {STAGE_LABEL[deal.stage]} · {deal.probability}% · owner {deal.ownerRep.name} · service {{ ONE_OFF: "one-off", FIXED_TERM: "fixed-term", MONTHLY_RECURRING: "monthly recurring" }[deal.serviceModel] ?? deal.serviceModel}
             {deal.expectedCloseDate ? ` · close ${deal.expectedCloseDate.toISOString().slice(0, 10)}` : ""}
           </p>
         </div>

@@ -59,6 +59,18 @@ export function DealForm({ accountId, accountName }: { accountId: string; accoun
               <input type="date" name="expectedCloseDate" className={inputCls} />
             </div>
           </div>
+
+          <div>
+            <label className="text-sm font-medium">Service billing model</label>
+            <select name="serviceModel" defaultValue="MONTHLY_RECURRING" className={inputCls}>
+              <option value="MONTHLY_RECURRING">Monthly recurring (scales with active devices)</option>
+              <option value="FIXED_TERM">Fixed-term (spread evenly across the term)</option>
+              <option value="ONE_OFF">One-off (recognised at delivery)</option>
+            </select>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Recognises the service revenue you enter below differently per HMD&apos;s invoicing models.
+            </p>
+          </div>
         </CardContent>
       </Card>
 

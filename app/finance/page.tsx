@@ -7,7 +7,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { currentUser } from "@/lib/session";
+import { currentUser, dashboardPathForRole } from "@/lib/session";
 import { formatEUR } from "@/lib/utils";
 import { threeYearForecast } from "@/lib/reporting";
 import { grossMargin, DEVICE_GM_PCT, SERVICE_GM_PCT } from "@/lib/forecast";
@@ -34,6 +34,8 @@ export default async function FinancePage({
 }) {
   const user = await currentUser();
   if (!user) redirect("/role-switch");
+  // Role guard: only leadership sees org-wide forecast (Rep/TAM bounce to their own view).
+  if (user.role === "REP" || user.role === "TAM") redirect(dashboardPathForRole(user.role));
 
   const sp = await searchParams;
   const channel = parseChannel(sp.channel);

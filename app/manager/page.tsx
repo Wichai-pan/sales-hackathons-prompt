@@ -6,9 +6,10 @@
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { currentUser } from "@/lib/session";
+import { currentUser, dashboardPathForRole } from "@/lib/session";
 import { rollUp, type Granularity } from "@/lib/forecast";
 import { formatEUR } from "@/lib/utils";
+import { forecastCategories } from "@/lib/targets";
 import {
   threeYearForecast,
   pipelineByStage,
@@ -40,11 +41,13 @@ export default async function ManagerPage({
 }) {
   const user = await currentUser();
   if (!user) redirect("/role-switch");
+  // Role guard: only leadership sees the org-wide pipeline (Rep/TAM bounce to their own view).
+  if (user.role === "REP" || user.role === "TAM") redirect(dashboardPathForRole(user.role));
 
   const sp = await searchParams;
   const granularity = parseGranularity(sp.granularity);
 
-  const [forecast, byStage, byOwner, stalled, pastClose, reps] =
+  const [forecast, byStage, byOwner, stalled, pastClose, reps, categories] =
     await Promise.all([
       threeYearForecast(),
       pipelineByStage(),
@@ -52,6 +55,7 @@ export default async function ManagerPage({
       stalledDeals(),
       pastCloseDeals(),
       listReps(),
+      forecastCategories(),
     ]);
 
   const buckets = rollUp(forecast.quarters, granularity);
@@ -78,6 +82,35 @@ export default async function ManagerPage({
       <Suspense fallback={<ForecastNarrativeSkeleton />}>
         <ForecastNarrativeCard />
       </Suspense>
+
+      {/* Quarter forecast — committed vs at-risk vs gap-to-target (SM persona #4) */}
+      <Card>
+        <CardHeader><CardTitle>Forecast vs target (3-yr weighted)</CardTitle></CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="rounded-md border border-border p-3">
+              <div className="text-xs text-muted-foreground">Committed</div>
+              <div className="mt-1 text-xl font-semibold text-emerald-600">{formatEUR(categories.committed)}</div>
+              <div className="text-xs text-muted-foreground">on-track, ≥70% stage</div>
+            </div>
+            <div className="rounded-md border border-border p-3">
+              <div className="text-xs text-muted-foreground">At risk</div>
+              <div className="mt-1 text-xl font-semibold text-destructive">{formatEUR(categories.atRisk)}</div>
+              <div className="text-xs text-muted-foreground">stalled / past close</div>
+            </div>
+            <div className="rounded-md border border-border p-3">
+              <div className="text-xs text-muted-foreground">Target</div>
+              <div className="mt-1 text-xl font-semibold">{formatEUR(categories.target)}</div>
+              <div className="text-xs text-muted-foreground">3-yr team target</div>
+            </div>
+            <div className="rounded-md border border-border p-3">
+              <div className="text-xs text-muted-foreground">Gap to target</div>
+              <div className="mt-1 text-xl font-semibold text-amber-600">{formatEUR(categories.gapToTarget)}</div>
+              <div className="text-xs text-muted-foreground">target − committed</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* KPI strip */}
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">

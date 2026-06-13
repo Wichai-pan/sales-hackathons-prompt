@@ -17,7 +17,7 @@ import {
   RESELLER_STAGES,
   STAGE_LABEL,
 } from "@/lib/forecast";
-import type { Channel, DealStage } from "@prisma/client";
+import type { Channel, DealStage, InvoicingModel } from "@prisma/client";
 
 // Projected expansion multipliers for years 2 and 3 (CONFIGURABLE ASSUMPTION).
 const YEAR2_GROWTH = 1.2;
@@ -36,6 +36,7 @@ export async function createDeal(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const channel = String(formData.get("channel") ?? "DIRECT") as Channel;
   let stage = String(formData.get("stage") ?? "INTEREST_SHOWN") as DealStage;
+  const serviceModel = String(formData.get("serviceModel") ?? "MONTHLY_RECURRING") as InvoicingModel;
   const closeRaw = String(formData.get("expectedCloseDate") ?? "");
   if (!accountId || !name) return;
 
@@ -75,6 +76,21 @@ export async function createDeal(formData: FormData) {
     };
   });
 
+  // Service-invoicing model (brief 2.2) — the SAME service value is RECOGNISED differently per model,
+  // so the three models produce different service-revenue curves (never flattened to one shape):
+  //   ONE_OFF        -> recognised at a single point (all in the first quarter)
+  //   FIXED_TERM     -> contract value spread evenly across the term (here: the 12 quarters)
+  //   MONTHLY_RECURRING -> scales with the active-device trajectory (per-quarter device share)
+  const totalService = rows.reduce((s, r) => s + r.serviceRevenue, 0);
+  const totalUnits = rows.reduce((s, r) => s + r.deviceUnits, 0) || 1;
+  rows.forEach((r, i) => {
+    if (serviceModel === "ONE_OFF") r.serviceRevenue = i === 0 ? totalService : 0;
+    else if (serviceModel === "FIXED_TERM") r.serviceRevenue = Math.round(totalService / rows.length);
+    else r.serviceRevenue = Math.round(totalService * (r.deviceUnits / totalUnits)); // MONTHLY_RECURRING
+    r.totalRevenue = r.deviceRevenue + r.serviceRevenue;
+    r.weightedRevenue = weightedRevenue(probability, r.totalRevenue);
+  });
+
   const deal = await prisma.deal.create({
     data: {
       accountId,
@@ -83,6 +99,7 @@ export async function createDeal(formData: FormData) {
       channel,
       stage,
       probability,
+      serviceModel,
       expectedCloseDate,
       status: "OPEN",
       forecastPeriods: { create: rows },
