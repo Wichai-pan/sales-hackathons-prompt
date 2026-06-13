@@ -3,7 +3,7 @@ event:
   name: "Sales Hackathon 2026 — HMD"
   deadline_utc: "2026-06-14T12:00:00Z"   # Sun 15:00 Europe/Helsinki
   freeze_hours: 3                          # code-freeze window before deadline -> 2026-06-14T09:00:00Z
-  phase: ideation                          # setup | ideation | build | freeze | submitted
+  phase: build                          # setup | ideation | build | freeze | submitted
   submission_url: "https://prompthack.aaltoes.com/sales-2026"
   demo_minutes: 3
 tracks:

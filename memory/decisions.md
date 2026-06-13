@@ -16,3 +16,4 @@
     * C NOT main line: at most 3 preset query CHIPS (At-risk DACH enterprise deals / Offers pending Finance / Cases blocking customer tests). NO open-ended NL query.
   WHY: A-lite+B hit brief's thesis ("less data entry, more analyst on the team"), most visceral in 3 min, differentiates from the other 2 HMD teams (who will likely do open NL query, per brief example).
   Runner-up (pivot insurance): if A-lite extraction proves too flaky, drop to B-only as the magic moment (still strong, reuses P0 data). If time collapses, C chips are the cheapest AI demo fallback.
+- [2026-06-13T09:00:00Z] SCOPE LOCKED by pitch-planner. 3 HERO (AI intake, NBA, 3-yr forecast) + 9 CRM-spine P0 + 2 P1 (query chips, deal risk) = 14 demo-relevant features. Generic 7-cap overridden: HMD prescribed-scope gates on 10 P0. Team intent = attempt ALL features; build order protects 7-step demo line first. Owners TBD until subtask breakdown. H3 forecast = pair (highest risk).
