@@ -102,6 +102,28 @@ export async function createDeal(formData: FormData) {
   redirect(`/deals/${deal.id}`);
 }
 
+export async function addDealNote(formData: FormData) {
+  const user = await currentUser();
+  if (!user) redirect("/role-switch");
+  const dealId = String(formData.get("dealId") ?? "");
+  const body = String(formData.get("body") ?? "").trim();
+  if (!dealId || !body) return;
+
+  const deal = await prisma.deal.findUnique({ where: { id: dealId } });
+  if (!deal) return;
+
+  await prisma.note.create({ data: { parentType: "DEAL", parentId: dealId, authorId: user.id, body } });
+  await createActivityEvent({
+    accountId: deal.accountId,
+    actorId: user.id,
+    type: "deal_note_added",
+    summary: `${user.name} noted on "${deal.name}"`,
+    linkedRecordType: "DEAL",
+    linkedRecordId: dealId,
+  });
+  revalidatePath(`/deals/${dealId}`);
+}
+
 export async function updateDealStage(formData: FormData) {
   const user = await currentUser();
   if (!user) redirect("/role-switch");

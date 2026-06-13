@@ -17,6 +17,7 @@ const ROLE_LABEL: Record<Role, string> = {
 
 // Role-aware nav (WAVE 1 routes). Each link shows only for the listed roles.
 const ROLE_LINKS: { label: string; href: string; roles: Role[] }[] = [
+  { label: "My desk", href: "/rep", roles: ["REP"] },
   { label: "Manager", href: "/manager", roles: ["SALES_MANAGER"] },
   { label: "Finance", href: "/finance", roles: ["FINANCE"] },
   { label: "Approvals", href: "/approvals", roles: ["SALES_MANAGER", "FINANCE"] },
@@ -50,14 +51,14 @@ export async function Nav() {
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="relative">
+          <Link href="/notifications" className="relative" aria-label="Notifications">
             <Bell className="h-5 w-5 text-muted-foreground" />
             {unread > 0 && (
               <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">
                 {unread}
               </span>
             )}
-          </div>
+          </Link>
           {user ? (
             <Link href="/role-switch" className="flex items-center gap-2 text-sm">
               <UserCircle2 className="h-5 w-5 text-muted-foreground" />

@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
-import { updateDealStage } from "../actions";
+import { updateDealStage, addDealNote } from "../actions";
 import type { DealStage } from "@prisma/client";
 
 export default async function DealPage({ params }: { params: Promise<{ id: string }> }) {
@@ -20,6 +20,12 @@ export default async function DealPage({ params }: { params: Promise<{ id: strin
     include: { account: true, ownerRep: true, forecastPeriods: { orderBy: { periodLabel: "asc" } } },
   });
   if (!deal) notFound();
+
+  const notes = await prisma.note.findMany({
+    where: { parentType: "DEAL", parentId: id },
+    include: { author: true },
+    orderBy: { createdAt: "desc" },
+  });
 
   const quarters = aggregateByQuarter(deal.forecastPeriods);
   const total = quarters.reduce((s, q) => s + q.totalRevenue, 0);
@@ -98,6 +104,27 @@ export default async function DealPage({ params }: { params: Promise<{ id: strin
               ))}
             </TBody>
           </Table>
+        </CardContent>
+      </Card>
+
+      {/* Deal notes */}
+      <Card className="mt-6">
+        <CardHeader><CardTitle>Notes</CardTitle></CardHeader>
+        <CardContent>
+          <form action={addDealNote} className="flex gap-2">
+            <input type="hidden" name="dealId" value={deal.id} />
+            <input name="body" placeholder="Add a note…" required className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm" />
+            <Button type="submit" size="sm">Add</Button>
+          </form>
+          <ul className="mt-4 space-y-3">
+            {notes.length === 0 && <li className="text-sm text-muted-foreground">No notes yet.</li>}
+            {notes.map((n) => (
+              <li key={n.id} className="rounded-md border border-border p-3 text-sm">
+                <div>{n.body}</div>
+                <div className="mt-1 text-xs text-muted-foreground">{n.author.name} · {n.createdAt.toISOString().slice(0, 16).replace("T", " ")}</div>
+              </li>
+            ))}
+          </ul>
         </CardContent>
       </Card>
     </main>

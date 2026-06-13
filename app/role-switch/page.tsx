@@ -3,7 +3,7 @@
 
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { setDemoUser } from "@/lib/session";
+import { setDemoUser, dashboardPathForRole } from "@/lib/session";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,9 +27,9 @@ async function switchTo(formData: FormData) {
   "use server";
   const userId = String(formData.get("userId"));
   await setDemoUser(userId);
-  // Role dashboards (/rep, /tam, /manager, /finance) are built in WAVE 1.
-  // Until they exist, the home overview ("/") is the safe landing.
-  redirect("/");
+  // Land each role on their own dashboard (the Rep dashboard hosts the AI intake HERO).
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  redirect(user ? dashboardPathForRole(user.role) : "/");
 }
 
 export default async function RoleSwitchPage() {
