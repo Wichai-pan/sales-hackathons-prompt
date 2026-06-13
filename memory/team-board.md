@@ -9,10 +9,10 @@
 | Task | Owner | State | Note |
 |---|---|---|---|
 | WAVE 0 foundation: scaffold + full Prisma schema + seed + Docker + run.sh + role-switch + lib helpers | V | done | Landed on main (fb3aaab), build-green (tsc+next build). Runtime seed verify pending DB. Owner unblocked. |
-| SA-V1 Catalog (product/service CRUD, retire logic, invoicing models) | V | todo | feat/v-catalog |
-| SA-V2 Offer approval state machine + SM/Finance queues + in-app notifications | V | todo | feat/v-approval |
-| SA-V3 TAM case flow (dashboard + detail + notes + close + escalate) | V | todo | feat/v-cases |
-| SA-V4 Manager + Finance dashboards + 3-yr forecast engine + reporting | V | todo | feat/v-forecast |
+| SA-V1 Catalog (product/service CRUD, retire logic, invoicing models) | V | done | /catalog + lib/catalog.ts (activeProducts/Services for Owner's offer builder). build-green |
+| SA-V2 Offer approval state machine + SM/Finance queues + in-app notifications | V | done | /approvals + lib/approval.ts (submitForApproval is Owner's submit contract). build-green |
+| SA-V3 TAM case flow (dashboard + detail + notes + close + escalate) | V | done | /tam + /cases/[id] + lib/cases.ts. build-green |
+| SA-V4 Manager + Finance dashboards + 3-yr forecast engine + reporting | V | done | /manager + /finance + /reports + lib/reporting.ts. build-green |
 
 ## Stream A — Owner (Sales-front + AI + Server/Deploy)
 

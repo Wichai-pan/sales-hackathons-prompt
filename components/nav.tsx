@@ -15,6 +15,16 @@ const ROLE_LABEL: Record<Role, string> = {
   FINANCE: "Finance",
 };
 
+// Role-aware nav (WAVE 1 routes). Each link shows only for the listed roles.
+const ROLE_LINKS: { label: string; href: string; roles: Role[] }[] = [
+  { label: "Manager", href: "/manager", roles: ["SALES_MANAGER"] },
+  { label: "Finance", href: "/finance", roles: ["FINANCE"] },
+  { label: "Approvals", href: "/approvals", roles: ["SALES_MANAGER", "FINANCE"] },
+  { label: "Catalog", href: "/catalog", roles: ["FINANCE"] },
+  { label: "My cases", href: "/tam", roles: ["TAM"] },
+  { label: "Reports", href: "/reports", roles: ["SALES_MANAGER", "FINANCE"] },
+];
+
 export async function Nav() {
   const user = await currentUser();
   const unread = user ? await unreadCount(user.id) : 0;
@@ -29,6 +39,12 @@ export async function Nav() {
           </Link>
           <nav className="hidden items-center gap-4 text-sm text-muted-foreground sm:flex">
             <Link href="/" className="hover:text-foreground">Overview</Link>
+            {user &&
+              ROLE_LINKS.filter((l) => l.roles.includes(user.role)).map((l) => (
+                <Link key={l.href} href={l.href} className="hover:text-foreground">
+                  {l.label}
+                </Link>
+              ))}
             <Link href="/role-switch" className="hover:text-foreground">Switch role</Link>
           </nav>
         </div>
