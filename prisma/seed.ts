@@ -185,19 +185,36 @@ async function main() {
       contacts: [{ name: "Daniel Frei", title: "Head of Endpoint Security", email: "daniel.frei@helvetiabank.example", primary: true }] },
   ];
 
+  // HMD asked for customer basics (domain/address/VAT) + a contact decision-role.
+  const VAT_PREFIX: Record<string, string> = { DACH: "DE", Nordics: "SE", Baltics: "LV", Finland: "FI", "Central Europe": "CH" };
+  const roleFromTitle = (title: string): "FINANCIAL" | "BUDGET" | "TECH" | "INFLUENCER" | "OTHER" => {
+    const t = title.toLowerCase();
+    if (/cfo|finance|financial/.test(t)) return "FINANCIAL";
+    if (/procurement|purchas|budget/.test(t)) return "BUDGET";
+    if (/ciso|security|it|cto|tech|endpoint/.test(t)) return "TECH";
+    if (/head|director|manager|officer|lead/.test(t)) return "INFLUENCER";
+    return "OTHER";
+  };
+
   const accounts: Account[] = [];
   const primaryContactByAccount = new Map<string, string>();
+  let accIdx = 0;
   for (const a of accountSpecs) {
+    accIdx++;
+    const domain = a.contacts[0]?.email.split("@")[1] ?? null;
     const acc = await prisma.account.create({
       data: {
         name: a.name, region: a.region, segment: a.segment, industry: a.industry,
+        domain,
+        address: `${a.name.split(" ")[0]} House, ${a.region}`,
+        vatId: `${VAT_PREFIX[a.region] ?? "EU"}${(20000000 + accIdx * 137).toString()}`,
         ownerRepId: a.owner, assignedTamId: a.tam, status: "ACTIVE",
       },
     });
     accounts.push(acc);
     for (const c of a.contacts) {
       const contact = await prisma.contact.create({
-        data: { accountId: acc.id, name: c.name, title: c.title, email: c.email, isPrimary: !!c.primary },
+        data: { accountId: acc.id, name: c.name, title: c.title, email: c.email, isPrimary: !!c.primary, decisionRole: roleFromTitle(c.title) },
       });
       if (c.primary) primaryContactByAccount.set(acc.id, contact.id);
     }

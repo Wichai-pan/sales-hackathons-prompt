@@ -129,9 +129,20 @@ model User {
   notifications   Notification[]  @relation("NotificationRecipient")
 }
 
+enum ContactRole {
+  FINANCIAL
+  BUDGET
+  TECH
+  INFLUENCER
+  OTHER
+}
+
 model Account {
   id           String   @id @default(cuid())
   name         String
+  domain       String?  // public domain — HMD asked for customer basics (domain/address/VAT)
+  address      String?
+  vatId        String?
   region       String
   segment      String
   industry     String
@@ -155,13 +166,14 @@ model Account {
 }
 
 model Contact {
-  id        String  @id @default(cuid())
-  accountId String
-  name      String
-  title     String?
-  email     String?
-  phone     String?
-  isPrimary Boolean @default(false)
+  id           String       @id @default(cuid())
+  accountId    String
+  name         String
+  title        String?
+  decisionRole ContactRole? // financial / budget / tech / influencer (HMD persona request)
+  email        String?
+  phone        String?
+  isPrimary    Boolean      @default(false)
 
   account       Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
   casesAsContact Case[] @relation("CaseCustomerContact")

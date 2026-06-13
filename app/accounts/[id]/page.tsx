@@ -37,6 +37,14 @@ function channelBadge(c: string) {
   return c === "RESELLER" ? <Badge variant="outline">Reseller</Badge> : <Badge variant="secondary">Direct</Badge>;
 }
 
+const CONTACT_ROLE_LABEL: Record<string, string> = {
+  FINANCIAL: "Financial decision maker",
+  BUDGET: "Budget owner",
+  TECH: "Tech decision maker",
+  INFLUENCER: "Influencer",
+  OTHER: "Contact",
+};
+
 export default async function AccountPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
@@ -75,6 +83,13 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
           <p className="mt-1 text-sm text-muted-foreground">
             {account.industry} · {account.segment} · {account.region}
           </p>
+          {(account.domain || account.address || account.vatId) && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              {[account.domain, account.address, account.vatId ? `VAT ${account.vatId}` : null]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+          )}
         </div>
         <div className="text-right text-sm">
           <div>Owner: <span className="font-medium">{account.ownerRep.name}</span></div>
@@ -234,9 +249,13 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
                     <li key={c.id} className="text-sm">
                       <div className="font-medium">
                         {c.name} {c.isPrimary && <Badge variant="secondary" className="ml-1">Primary</Badge>}
+                        {c.decisionRole && c.decisionRole !== "OTHER" && (
+                          <Badge variant="outline" className="ml-1">{CONTACT_ROLE_LABEL[c.decisionRole]}</Badge>
+                        )}
                       </div>
                       {c.title && <div className="text-xs text-muted-foreground">{c.title}</div>}
                       {c.email && <div className="text-xs text-muted-foreground">{c.email}</div>}
+                      {c.phone && <div className="text-xs text-muted-foreground">{c.phone}</div>}
                     </li>
                   ))}
                 </ul>
