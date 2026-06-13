@@ -2,7 +2,7 @@
 // notification count, and links. Role dashboards are added by WAVE 1 owners.
 
 import Link from "next/link";
-import { Bell, ShieldCheck, UserCircle2 } from "lucide-react";
+import { Bell, Search, ShieldCheck, UserCircle2 } from "lucide-react";
 import { currentUser } from "@/lib/session";
 import { unreadCount } from "@/lib/notify";
 import { Badge } from "@/components/ui/badge";
@@ -51,6 +51,16 @@ export async function Nav() {
         </div>
 
         <div className="flex items-center gap-4">
+          <form action="/search" className="relative hidden sm:block">
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="search"
+              name="q"
+              placeholder="Search…"
+              aria-label="Search the CRM"
+              className="h-8 w-44 rounded-md border border-input bg-background pl-8 pr-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </form>
           <Link href="/notifications" className="relative" aria-label="Notifications">
             <Bell className="h-5 w-5 text-muted-foreground" />
             {unread > 0 && (

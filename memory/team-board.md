@@ -13,6 +13,7 @@
 | SA-V2 Offer approval state machine + SM/Finance queues + in-app notifications | V | done | /approvals + lib/approval.ts (submitForApproval is Owner's submit contract). build-green |
 | SA-V3 TAM case flow (dashboard + detail + notes + close + escalate) | V | done | /tam + /cases/[id] + lib/cases.ts. build-green |
 | SA-V4 Manager + Finance dashboards + 3-yr forecast engine + reporting | V | done | /manager + /finance + /reports + lib/reporting.ts. build-green |
+| P1 #11 Global free-text search (accounts/deals/cases/contacts) | V | done | /search + lib/search.ts + nav search box. Closes last P1 gap → P1 7/7. build-green |
 
 ## Stream A — Owner (Sales-front + AI + Server/Deploy)
 
