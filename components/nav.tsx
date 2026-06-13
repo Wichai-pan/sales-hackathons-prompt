@@ -24,6 +24,7 @@ const ROLE_LINKS: { label: string; href: string; roles: Role[] }[] = [
   { label: "Catalog", href: "/catalog", roles: ["FINANCE"] },
   { label: "My cases", href: "/tam", roles: ["TAM"] },
   { label: "Reports", href: "/reports", roles: ["SALES_MANAGER", "FINANCE"] },
+  { label: "Smart views", href: "/views", roles: ["REP", "SALES_MANAGER", "FINANCE"] },
 ];
 
 export async function Nav() {
