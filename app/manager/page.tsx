@@ -10,6 +10,7 @@ import { currentUser, dashboardPathForRole } from "@/lib/session";
 import { rollUp, type Granularity } from "@/lib/forecast";
 import { formatEUR } from "@/lib/utils";
 import { forecastCategories } from "@/lib/targets";
+import { ForecastChart } from "@/components/forecast-chart";
 import {
   threeYearForecast,
   pipelineByStage,
@@ -108,6 +109,9 @@ export default async function ManagerPage({
               <div className="mt-1 text-xl font-semibold text-amber-600">{formatEUR(categories.gapToTarget)}</div>
               <div className="text-xs text-muted-foreground">target − committed</div>
             </div>
+          </div>
+          <div className="mt-4">
+            <ForecastChart quarters={forecast.quarters} />
           </div>
         </CardContent>
       </Card>

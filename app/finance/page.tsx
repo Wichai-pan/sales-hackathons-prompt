@@ -13,6 +13,7 @@ import { threeYearForecast } from "@/lib/reporting";
 import { grossMargin, DEVICE_GM_PCT, SERVICE_GM_PCT } from "@/lib/forecast";
 import { Suspense } from "react";
 import { ForecastNarrativeCard, ForecastNarrativeSkeleton } from "@/components/forecast-narrative-card";
+import { ForecastChart } from "@/components/forecast-chart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -191,6 +192,16 @@ export default async function FinancePage({
               </Link>
             ))}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* 3-year forecast chart */}
+      <Card>
+        <CardHeader>
+          <CardTitle>3-year forecast — device vs service, stage-weighted</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ForecastChart quarters={quarters} />
         </CardContent>
       </Card>
 
