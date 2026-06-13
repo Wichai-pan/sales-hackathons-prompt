@@ -75,7 +75,13 @@ export default async function FinancePage({
             separate, weighted by stage probability.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <a href="/api/export/forecast">
+            <Button variant="outline" size="sm">Export forecast CSV</Button>
+          </a>
+          <a href="/api/export/cases">
+            <Button variant="outline" size="sm">Export cases CSV</Button>
+          </a>
           <Link href="/approvals">
             <Button variant="outline" size="sm">
               Finance approvals
