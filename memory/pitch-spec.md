@@ -4,10 +4,12 @@
 > Adding a feature requires removing one (record the swap in decisions.md).
 > When behind schedule, cut from P2 upward. P0 = the demo critical path.
 >
-> NOTE: HMD is a PRESCRIBED-SCOPE challenge — the brief gates on 10 must-have features
-> all functioning. So the generic "≤7 features" cap does NOT apply. We honor its SPIRIT
-> by polishing only 3 HERO features; the CRM spine is built thin (minimal-works CRUD).
-> Team intent = attempt ALL features; BUILD ORDER protects the demo line first.
+> NOTE: HMD is a PRESCRIBED-SCOPE challenge. Team decision: ATTEMPT THE FULL BRIEF —
+> all 10 P0 + all 7 P1 + P2 opportunistically. The generic "≤7 features" cap is OVERRIDDEN
+> (explicit human call). Discipline kept instead: build in the 9-phase order from BUILD-SPEC.md,
+> demo path must run end-to-end on main before any P2, no broken placeholders, AI after P0.
+> Detailed data model / business rules / phase acceptance live in /BUILD-SPEC.md (authored by V) —
+> THE canonical build spec. This file = narrative + demo path + the 3 HERO differentiators.
 
 ## 3-Minute Narrative
 
@@ -31,7 +33,7 @@ Owners = TBD (assigned at subtask breakdown / mvp-scaffolder). Build order = top
 
 | # | Feature | Priority | Demo-visible | Owner | Status |
 |---|---|---|---|---|---|
-| H1 | AI-assisted intake: email/notes → draft CRM updates preview → Apply selected | P0 | [demo-visible] | TBD | todo |
+| H1 | AI-assisted intake: email/notes → draft CRM updates preview → Apply selected (built in Phase 8 AI layer; NOT in V's BUILD-SPEC, added by team as the demo opener; pure text paste + LLM extract route + preview card, NO Microsoft Graph; distinct from P2 email-to-case) | P0 | [demo-visible] | TBD | todo |
 | H2 | AI Next Best Action on account page (reads timeline → advice + draft email) | P0 | [demo-visible] | TBD | todo |
 | H3 | 3-yr time-phased weighted forecast, device vs service revenue separated | P0 | [demo-visible] | PAIR (Owner+V) | todo |
 
@@ -56,9 +58,11 @@ Owners = TBD (assigned at subtask breakdown / mvp-scaffolder). Build order = top
 | P1a | 3 preset query chips (At-risk DACH enterprise / Offers pending Finance / Cases blocking customer tests) | P1 | [demo-visible] | TBD | todo |
 | P1b | Deal risk indicator (stalled 14+ days, in Manager view) | P1 | [demo-visible] | TBD | todo |
 
-### 🟡 Stretch — only after everything above works (team intent: attempt all)
+### 🟡 Full-brief scope — team attempts ALL (build in BUILD-SPEC 9-phase order)
 
-Search & filter · Case activity log · Basic reporting (remaining P1) → then P2 (SLA tracking, CSV export, email-to-case, Outlook, AI case summary, AI forecast narrative). Do NOT start any of these until the 7-step demo path runs end-to-end on `main`.
+Remaining P1 (also targeted): Search & filter · Pipeline filters · Sales forecast view · Case activity log · Basic reporting.
+P2 (opportunistic, only after P0+P1 + demo path stable on main): SLA/due tracking · CSV/Excel export · Email-to-case (Graph) · Outlook calendar (Graph) · AI case summary · AI forecast narrative (forecast narrative may come early if low-effort — helps Finance/Manager demo).
+RULE: do NOT start any P2 until the 7-step demo path runs end-to-end on `main`. Prefer fewer working features over broken placeholders.
 
 ## Forbidden (do not build)
 

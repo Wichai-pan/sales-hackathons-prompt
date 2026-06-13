@@ -3,7 +3,7 @@
 - Track: HMD (AI-native CRM) — LOCKED | Deadline(UTC): 2026-06-14T12:00:00Z
 - Phase: build | Freeze at: 2026-06-14T09:00:00Z (Sun 12:00 Helsinki)
 - Magic moment: AI-assisted intake (paste email → draft CRM updates preview → Apply) + Next Best Action on account page; business close = 3-yr weighted forecast (device vs service revenue split)
-- Scope: LOCKED — 3 HERO + 9 spine P0 + 2 P1 = 14 demo features (ceiling; add one means cut one). Stretch only after 7-step demo line runs on main.
+- Scope: FULL BRIEF (team override) — all 10 P0 + all 7 P1 + P2 opportunistic. 3 HERO = AI intake, NBA, 3-yr forecast. Build in BUILD-SPEC.md 9-phase order; demo path on main before any P2; AI after P0.
 - Roles: Owner (kysent0110) = presenter/fullstack · V = fullstack · both vibe coding · owners per-feature TBD until subtask breakdown
 - Blockers: none
 - Next gate: MVP scaffold (hackathon-mvp-scaffolder) → mid-event rubric check

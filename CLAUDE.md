@@ -15,8 +15,9 @@ Before asking the user anything, check `memory/event.yaml`. Ask only missing fie
 
 ## Scope rules
 
-- `memory/pitch-spec.md` is the spec. Its feature list is a ceiling: adding one means cutting one (record in `memory/decisions.md`).
-- Before implementing anything, ask: is this visible in the 3-minute demo? If not, it goes to the backlog, not the codebase.
+- `memory/pitch-spec.md` = narrative + demo path + 3 HERO contract. `/BUILD-SPEC.md` (by V) = canonical detailed spec (data model, business rules, 9-phase order, acceptance checklist). Keep both consistent.
+- Scope = FULL BRIEF (team override of the generic 7-cap): all 10 P0 + all 7 P1 + P2 opportunistic. Discipline: build in BUILD-SPEC 9-phase order; the 7-step demo path must run end-to-end on `main` before any P2; AI after P0; prefer fewer working features over broken placeholders.
+- 3 HERO differentiators (full polish): AI-assisted intake (email→draft→Apply, Phase 8), AI Next Best Action (Phase 8), 3-yr time-phased weighted forecast (Phase 7, device/service split).
 - Fake/hardcoded data is legal. HMD brief REQUIRES realistic seed data — empty DB is penalized.
 
 ## Project specifics
