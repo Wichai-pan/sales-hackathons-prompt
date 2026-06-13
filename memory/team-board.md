@@ -1,25 +1,32 @@
 # Team Board — Sales Hackathon 2026 — HMD
 
-> One task per line. Per-line ownership: only the owner (or hackathon-team-board) edits a line.
-> States: todo | doing | blocked | done
-> Owners TBD until subtask breakdown (mvp-scaffolder). Build order = top to bottom.
+> One task per line. Per-line ownership: only the owner edits their line.
+> States: todo | doing | blocked | done. Plans: memory/plan-owner.md, memory/plan-v.md, memory/parallel-plan.md.
+> Build order: V WAVE 0 foundation (blocking) → both WAVE 1 (≤4 subagents each) → demo path green → stretch.
+
+## Stream B — V (Foundation + Data + Back-office + Forecast)
 
 | Task | Owner | State | Note |
 |---|---|---|---|
-| Scaffold Next.js + Prisma + Postgres + Docker skeleton + run.sh | TBD | todo | hackathon-mvp-scaffolder next |
-| Prisma schema: account/contact/deal/case/offer/catalog/notes/user-roles | TBD | todo | spine foundation |
-| Seed realistic HMD demo data (~8-12 accounts, deals all stages, cases, catalog) | TBD | todo | empty DB = penalty |
-| S1 Account + contact + activity timeline | TBD | todo | |
-| S2 Deal pipeline + stages (direct/reseller, forecast input) | TBD | todo | |
-| S3 Case management (status/priority/notes) | TBD | todo | |
-| S4 Offer creation from catalog + storage | TBD | todo | |
-| S5 Offer approval workflow (discount→SM→Finance, lock) | TBD | todo | demo step 3-4 |
-| S6 Product/pricing + service catalog | TBD | todo | |
-| S7 Role-based access + 4 dashboards | TBD | todo | demo role-switcher |
-| S8 Timestamped notes | TBD | todo | |
-| S9 In-app notifications | TBD | todo | demo step 4 |
-| H1 AI-assisted intake (email→draft preview→Apply) | TBD | todo | HERO, demo step 1 |
-| H2 AI Next Best Action on account | TBD | todo | HERO, demo step 2 |
-| H3 3-yr time-phased weighted forecast (device/service split) | PAIR | todo | HERO, highest risk, pair up |
-| P1a 3 preset query chips | TBD | todo | polish |
-| P1b Deal risk indicator (stalled 14d) | TBD | todo | Manager view |
+| WAVE 0 foundation: scaffold + full Prisma schema + seed + Docker + run.sh + role-switch + lib helpers | V | todo | BLOCKING — push to main, then signal Owner |
+| SA-V1 Catalog (product/service CRUD, retire logic, invoicing models) | V | todo | feat/v-catalog |
+| SA-V2 Offer approval state machine + SM/Finance queues + in-app notifications | V | todo | feat/v-approval |
+| SA-V3 TAM case flow (dashboard + detail + notes + close + escalate) | V | todo | feat/v-cases |
+| SA-V4 Manager + Finance dashboards + 3-yr forecast engine + reporting | V | todo | feat/v-forecast |
+
+## Stream A — Owner (Sales-front + AI + Server/Deploy)
+
+| Task | Owner | State | Note |
+|---|---|---|---|
+| WAVE 0 server prep: Frankfurt Docker + env + Azure OpenAI creds + smoke test | Owner | todo | parallel, no code dep |
+| SA-O1 Rep dashboard + Account 360 page | Owner | todo | feat/owner-account360 |
+| SA-O2 Deal create/edit + 12-month forecast input + channel stage rules | Owner | todo | feat/owner-deal |
+| SA-O3 Offer builder (catalog→snapshot→discount+justification→submit) | Owner | todo | feat/owner-offer |
+| SA-O4 AI layer: intake + NBA + forecast narrative + 3 query chips | Owner | todo | feat/owner-ai |
+| WAVE 2 demo hardening + README + deck | Owner | todo | start ≤ T-6h |
+
+## Pair
+
+| Task | Owner | State | Note |
+|---|---|---|---|
+| 3-yr forecast: V engine ↔ Owner input/narrative, meet at DealForecastPeriod | PAIR | todo | sync row shape early |
