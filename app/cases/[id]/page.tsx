@@ -13,7 +13,9 @@ import {
   changeCaseStatus,
   closeCase,
   escalateCase,
+  reassignCase,
 } from "@/app/cases/actions";
+import { prisma } from "@/lib/db";
 import { Suspense } from "react";
 import { CaseSummaryCard, CaseSummarySkeleton } from "@/components/case-summary-card";
 import { MIN_NOTES_FOR_SUMMARY } from "@/lib/ai/case-summary";
@@ -78,9 +80,10 @@ export default async function CaseDetailPage({
   const kase = await caseDetail(id);
   if (!kase) notFound();
 
-  const [notes, activity] = await Promise.all([
+  const [notes, activity, tams] = await Promise.all([
     caseNotes(id),
     caseActivity(kase.accountId),
+    prisma.user.findMany({ where: { role: "TAM" }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
   ]);
 
   const isClosed = kase.status === "CLOSED";
@@ -204,6 +207,16 @@ export default async function CaseDetailPage({
                   <dt className="text-xs text-muted-foreground">Assigned TAM</dt>
                   <dd className="font-medium">
                     {kase.assignedTam?.name ?? "Unassigned"}
+                    <form action={reassignCase} className="mt-1 flex items-center gap-1">
+                      <input type="hidden" name="caseId" value={kase.id} />
+                      <select name="tamId" defaultValue={kase.assignedTamId ?? ""} className="rounded-md border border-input bg-background px-2 py-1 text-xs">
+                        <option value="" disabled>Reassign to…</option>
+                        {tams.map((t) => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                      </select>
+                      <button type="submit" className="rounded-md border border-input px-2 py-1 text-xs hover:bg-muted">Reassign</button>
+                    </form>
                   </dd>
                 </div>
                 <div>

@@ -97,6 +97,7 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
           <div className="mt-1 flex justify-end gap-2">
             <Link href={`/deals/new?accountId=${account.id}`}><Button size="sm">New deal</Button></Link>
             <Link href={`/offers/new?accountId=${account.id}`}><Button size="sm" variant="secondary">New offer</Button></Link>
+            <Link href={`/cases/new?accountId=${account.id}`}><Button size="sm" variant="outline">New case</Button></Link>
           </div>
         </div>
       </div>

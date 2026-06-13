@@ -322,7 +322,7 @@ async function main() {
   ];
   // SLA window in days by priority (mirrors lib/sla.ts SLA_DAYS) — P2 #18.
   const SLA_DAYS: Record<string, number> = { CRITICAL: 2, HIGH: 4, MEDIUM: 8, LOW: 15 };
-  const createdCases: { id: string; tam: string; ageDays: number }[] = [];
+  const createdCases: { id: string; tam: string; ageDays: number; accountId: string; title: string }[] = [];
   for (const c of caseSpecs) {
     const acc = byAccount(c.account);
     const createdAt = daysAgo(c.ageDays);
@@ -342,7 +342,16 @@ async function main() {
         closedAt: c.closedDaysAgo != null ? daysAgo(c.closedDaysAgo) : null,
       },
     });
-    createdCases.push({ id: created.id, tam: c.tam, ageDays: c.ageDays });
+    createdCases.push({ id: created.id, tam: c.tam, ageDays: c.ageDays, accountId: acc.id, title: c.title });
+    // Service-history timeline event so the TAM "reads the account history" demo beat is populated.
+    await prisma.activityEvent.create({
+      data: { accountId: acc.id, actorId: c.tam, type: "CASE_OPENED", summary: `Case opened: ${c.title}`, linkedRecordType: "CASE", linkedRecordId: created.id, createdAt },
+    });
+    if (c.closedDaysAgo != null) {
+      await prisma.activityEvent.create({
+        data: { accountId: acc.id, actorId: c.tam, type: "CASE_CLOSED", summary: `Case closed: ${c.title}`, linkedRecordType: "CASE", linkedRecordId: created.id, createdAt: daysAgo(c.closedDaysAgo) },
+      });
+    }
   }
 
   // Threaded notes on the first two cases (>=5 each) so the AI case summary (P2 #22) has material.
@@ -366,14 +375,15 @@ async function main() {
   for (let i = 0; i < Math.min(2, createdCases.length); i++) {
     const cc = createdCases[i];
     for (let j = 0; j < noteThreads[i].length; j++) {
+      const noteAt = daysAgo(Math.max(0, cc.ageDays - j));
+      // Seed the two note tiers (TAM #5): make the vendor/internal coordination notes internal.
+      const internal = /vendor|engineering|qa|hotfix|internal/i.test(noteThreads[i][j]);
       await prisma.note.create({
-        data: {
-          parentType: "CASE",
-          parentId: cc.id,
-          authorId: cc.tam,
-          body: noteThreads[i][j],
-          createdAt: daysAgo(Math.max(0, cc.ageDays - j)),
-        },
+        data: { parentType: "CASE", parentId: cc.id, authorId: cc.tam, body: noteThreads[i][j], internal, createdAt: noteAt },
+      });
+      // Each note also lands on the account service-history timeline.
+      await prisma.activityEvent.create({
+        data: { accountId: cc.accountId, actorId: cc.tam, type: "CASE_NOTE_ADDED", summary: `Note on "${cc.title}"`, linkedRecordType: "CASE", linkedRecordId: cc.id, createdAt: noteAt },
       });
     }
   }
