@@ -24,7 +24,7 @@ export function TR({ className, ...props }: React.HTMLAttributes<HTMLTableRowEle
 export function TH({ className, ...props }: React.ThHTMLAttributes<HTMLTableCellElement>) {
   return (
     <th
-      className={cn("h-9 px-3 text-left align-middle text-xs font-medium text-muted-foreground", className)}
+      className={cn("h-9 px-3 text-left align-middle text-[11px] font-medium uppercase tracking-wider text-muted-foreground", className)}
       {...props}
     />
   );

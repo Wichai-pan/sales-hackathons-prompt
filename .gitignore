@@ -10,6 +10,7 @@ dist/
 .agent/
 
 # build / tooling
+/design/
 /coverage
 *.tsbuildinfo
 next-env.d.ts
