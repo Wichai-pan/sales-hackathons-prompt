@@ -16,16 +16,24 @@ const eur = (n: number) => "€" + Math.round(n).toLocaleString("en-IE");
 async function snapshot(userId: string, role: Role): Promise<string> {
   const lines: string[] = [];
   if (role === "REP") {
-    const [accounts, deals, pending] = await Promise.all([
-      prisma.account.count({ where: { ownerRepId: userId } }),
+    const [accounts, deals, pending, wonLost] = await Promise.all([
+      prisma.account.findMany({ where: { ownerRepId: userId }, select: { name: true } }),
       prisma.deal.findMany({ where: { ownerRepId: userId, status: "OPEN" }, include: { account: true } }),
       prisma.offer.count({ where: { createdById: userId, status: { in: ["PENDING_SM", "PENDING_FINANCE"] } } }),
+      prisma.deal.groupBy({ by: ["status"], where: { ownerRepId: userId, status: { in: ["WON", "LOST"] } }, _count: true }),
     ]);
+    const won = wonLost.find((w) => w.status === "WON")?._count ?? 0;
+    const lost = wonLost.find((w) => w.status === "LOST")?._count ?? 0;
     const atRisk = deals.filter((d) => daysSince(d.lastActivityAt) >= 14 || (d.expectedCloseDate && d.expectedCloseDate.getTime() < Date.now()));
-    lines.push(`My accounts: ${accounts}. My open deals: ${deals.length}. Offers awaiting approval: ${pending}.`);
-    lines.push(`At-risk deals (${atRisk.length}): ${atRisk.slice(0, 5).map((d) => `${d.name} [${d.account.name}]`).join("; ") || "none"}.`);
+    const byStage = deals.reduce<Record<string, number>>((m, d) => ((m[d.stage] = (m[d.stage] ?? 0) + 1), m), {});
+    lines.push(`My book: ${accounts.length} accounts — ${accounts.slice(0, 8).map((a) => a.name).join(", ")}.`);
+    lines.push(`My open deals: ${deals.length} (by stage: ${Object.entries(byStage).map(([s, n]) => `${s} ${n}`).join(", ") || "none"}). Offers awaiting approval: ${pending}.`);
+    lines.push(`Closed so far: ${won} won, ${lost} lost.`);
+    lines.push(`At-risk deals (${atRisk.length}): ${atRisk.slice(0, 5).map((d) => `${d.name} [${d.account.name}, ${daysSince(d.lastActivityAt)}d idle]`).join("; ") || "none"}.`);
   } else if (role === "SALES_MANAGER") {
-    const [stalled, pastClose, pendingSM, cats] = await Promise.all([stalledDeals(), pastCloseDeals(), prisma.offer.count({ where: { status: "PENDING_SM" } }), forecastCategories()]);
+    const [stalled, pastClose, pendingSM, cats, reps] = await Promise.all([stalledDeals(), pastCloseDeals(), prisma.offer.count({ where: { status: "PENDING_SM" } }), forecastCategories(), prisma.user.findMany({ where: { role: "REP" }, select: { id: true, name: true } })]);
+    const repDealCounts = await Promise.all(reps.map(async (r) => ({ name: r.name, n: await prisma.deal.count({ where: { ownerRepId: r.id, status: "OPEN" } }) })));
+    lines.push(`My team: ${repDealCounts.map((r) => `${r.name} (${r.n} open)`).join(", ")}.`);
     lines.push(`Stalled deals (>14d): ${stalled.length}. Past expected close: ${pastClose.length}. Offers awaiting MY (SM) approval: ${pendingSM}.`);
     lines.push(`Forecast: committed ${eur(cats.committed)}, at-risk ${eur(cats.atRisk)}, target ${eur(cats.target)}, gap ${eur(cats.gapToTarget)}.`);
     lines.push(`Top stalled: ${stalled.slice(0, 4).map((d) => d.name).join("; ") || "none"}.`);

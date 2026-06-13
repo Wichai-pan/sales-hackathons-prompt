@@ -11,6 +11,7 @@ import { rollUp, type Granularity } from "@/lib/forecast";
 import { formatEUR } from "@/lib/utils";
 import { forecastCategories } from "@/lib/targets";
 import { ForecastChart } from "@/components/forecast-chart";
+import { PipelineFunnel } from "@/components/pipeline-funnel";
 import {
   threeYearForecast,
   pipelineByStage,
@@ -266,6 +267,16 @@ export default async function ManagerPage({
               </TBody>
             </Table>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Pipeline funnel */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Pipeline funnel</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <PipelineFunnel rows={byStage} />
         </CardContent>
       </Card>
 
