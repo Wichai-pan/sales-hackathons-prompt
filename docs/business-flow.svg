@@ -1,0 +1,84 @@
+<svg viewBox="0 0 760 940" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="t d" font-family="-apple-system, Segoe UI, Roboto, Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif">
+  <title id="t">一单生意的生命周期</title>
+  <desc id="d">HMD Secure CRM 的业务主流程：从 AI 智能录入，到客户档案与下一步建议，推进商机、生成报价、折扣审批、售后工单，最后汇总进 3 年加权预测。按角色（销售代表 / 技术经理 / 销售经理 / 财务）配色。</desc>
+
+  <rect x="0" y="0" width="760" height="940" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+  <text x="40" y="40" font-size="20" font-weight="600" fill="#111827">一单生意的生命周期 · 谁在每一步做什么</text>
+  <text x="40" y="62" font-size="13" fill="#6B7280">HMD Secure CRM —— 从 AI 录入到 3 年加权预测</text>
+
+  <line x1="44" y1="125" x2="44" y2="821" stroke="#D1D5DB" stroke-width="2"/>
+
+  <!-- 1 -->
+  <rect x="72" y="80" width="648" height="90" rx="12" fill="#FFFFFF" stroke="#E5E7EB"/>
+  <circle cx="44" cy="125" r="16" fill="#2563EB" stroke="#FFFFFF" stroke-width="3"/>
+  <text x="44" y="130" text-anchor="middle" font-size="15" font-weight="600" fill="#FFFFFF">1</text>
+  <text x="92" y="116" font-size="16" font-weight="600" fill="#111827">AI 智能录入</text>
+  <text x="92" y="142" font-size="13" fill="#6B7280">粘贴客户邮件 → AI 草稿预览 → 点 Apply 才写库</text>
+  <rect x="486" y="113" width="56" height="24" rx="12" fill="#EDE9FE"/>
+  <text x="514" y="129" text-anchor="middle" font-size="11" font-weight="600" fill="#5B21B6">AI</text>
+  <rect x="556" y="110" width="150" height="30" rx="15" fill="#DBEAFE"/>
+  <text x="631" y="129" text-anchor="middle" font-size="12" fill="#1E40AF">销售代表 Rep</text>
+
+  <!-- 2 -->
+  <rect x="72" y="196" width="648" height="90" rx="12" fill="#FFFFFF" stroke="#E5E7EB"/>
+  <circle cx="44" cy="241" r="16" fill="#2563EB" stroke="#FFFFFF" stroke-width="3"/>
+  <text x="44" y="246" text-anchor="middle" font-size="15" font-weight="600" fill="#FFFFFF">2</text>
+  <text x="92" y="232" font-size="16" font-weight="600" fill="#111827">客户档案 360 + 下一步建议</text>
+  <text x="92" y="258" font-size="13" fill="#6B7280">一页看全：联系人 / 商机 / 工单 / 时间线 · AI 提示下一步</text>
+  <rect x="486" y="229" width="56" height="24" rx="12" fill="#EDE9FE"/>
+  <text x="514" y="245" text-anchor="middle" font-size="11" font-weight="600" fill="#5B21B6">AI</text>
+  <rect x="556" y="226" width="150" height="30" rx="15" fill="#DBEAFE"/>
+  <text x="631" y="245" text-anchor="middle" font-size="12" fill="#1E40AF">销售代表 Rep</text>
+
+  <!-- 3 -->
+  <rect x="72" y="312" width="648" height="90" rx="12" fill="#FFFFFF" stroke="#E5E7EB"/>
+  <circle cx="44" cy="357" r="16" fill="#2563EB" stroke="#FFFFFF" stroke-width="3"/>
+  <text x="44" y="362" text-anchor="middle" font-size="15" font-weight="600" fill="#FFFFFF">3</text>
+  <text x="92" y="348" font-size="16" font-weight="600" fill="#111827">推进商机（Deal）</text>
+  <text x="92" y="374" font-size="13" fill="#6B7280">走销售漏斗阶段；直销 vs 经销商规则不同</text>
+  <rect x="556" y="342" width="150" height="30" rx="15" fill="#DBEAFE"/>
+  <text x="631" y="361" text-anchor="middle" font-size="12" fill="#1E40AF">销售代表 Rep</text>
+
+  <!-- 4 -->
+  <rect x="72" y="428" width="648" height="90" rx="12" fill="#FFFFFF" stroke="#E5E7EB"/>
+  <circle cx="44" cy="473" r="16" fill="#2563EB" stroke="#FFFFFF" stroke-width="3"/>
+  <text x="44" y="478" text-anchor="middle" font-size="15" font-weight="600" fill="#FFFFFF">4</text>
+  <text x="92" y="464" font-size="16" font-weight="600" fill="#111827">生成报价（Offer）</text>
+  <text x="92" y="490" font-size="13" fill="#6B7280">从目录选产品/服务 + 数量 + 折扣（含理由）</text>
+  <rect x="556" y="458" width="150" height="30" rx="15" fill="#DBEAFE"/>
+  <text x="631" y="477" text-anchor="middle" font-size="12" fill="#1E40AF">销售代表 Rep</text>
+
+  <!-- 5 -->
+  <rect x="72" y="544" width="648" height="90" rx="12" fill="#FFFFFF" stroke="#E5E7EB"/>
+  <circle cx="44" cy="589" r="16" fill="#D97706" stroke="#FFFFFF" stroke-width="3"/>
+  <text x="44" y="594" text-anchor="middle" font-size="15" font-weight="600" fill="#FFFFFF">5</text>
+  <text x="92" y="580" font-size="16" font-weight="600" fill="#111827">折扣审批</text>
+  <text x="92" y="606" font-size="13" fill="#6B7280">需理由 · 审批期锁定 · 先销售经理、后财务 · 站内通知</text>
+  <rect x="556" y="574" width="150" height="30" rx="15" fill="#FEF3C7"/>
+  <text x="631" y="593" text-anchor="middle" font-size="12" fill="#92400E">经理 → 财务</text>
+
+  <!-- 6 -->
+  <rect x="72" y="660" width="648" height="90" rx="12" fill="#FFFFFF" stroke="#E5E7EB"/>
+  <circle cx="44" cy="705" r="16" fill="#0D9488" stroke="#FFFFFF" stroke-width="3"/>
+  <text x="44" y="710" text-anchor="middle" font-size="15" font-weight="600" fill="#FFFFFF">6</text>
+  <text x="92" y="696" font-size="16" font-weight="600" fill="#111827">处理售后工单（Case）</text>
+  <text x="92" y="722" font-size="13" fill="#6B7280">客户报障 → 加笔记 → 关闭 / 升级第三方</text>
+  <rect x="556" y="690" width="150" height="30" rx="15" fill="#CCFBF1"/>
+  <text x="631" y="709" text-anchor="middle" font-size="12" fill="#115E59">技术经理 TAM</text>
+
+  <!-- 7 -->
+  <rect x="72" y="776" width="648" height="90" rx="12" fill="#FFFFFF" stroke="#E5E7EB"/>
+  <circle cx="44" cy="821" r="16" fill="#16A34A" stroke="#FFFFFF" stroke-width="3"/>
+  <text x="44" y="826" text-anchor="middle" font-size="15" font-weight="600" fill="#FFFFFF">7</text>
+  <text x="92" y="812" font-size="16" font-weight="600" fill="#111827">汇总与预测</text>
+  <text x="92" y="838" font-size="13" fill="#6B7280">加权管道 · 停滞预警 · 3 年季度预测（设备 / 服务分列）</text>
+  <rect x="556" y="806" width="150" height="30" rx="15" fill="#DCFCE7"/>
+  <text x="631" y="825" text-anchor="middle" font-size="12" fill="#166534">经理 + 财务</text>
+
+  <!-- legend -->
+  <circle cx="78" cy="900" r="6" fill="#2563EB"/><text x="90" y="904" font-size="12" fill="#374151">销售代表</text>
+  <circle cx="190" cy="900" r="6" fill="#0D9488"/><text x="202" y="904" font-size="12" fill="#374151">技术经理</text>
+  <circle cx="302" cy="900" r="6" fill="#D97706"/><text x="314" y="904" font-size="12" fill="#374151">销售经理</text>
+  <circle cx="414" cy="900" r="6" fill="#16A34A"/><text x="426" y="904" font-size="12" fill="#374151">财务</text>
+  <circle cx="494" cy="900" r="6" fill="#7C3AED"/><text x="506" y="904" font-size="12" fill="#374151">AI（只出草稿/建议，人确认）</text>
+</svg>
