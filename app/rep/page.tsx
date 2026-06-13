@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { IntakePanel } from "@/components/intake-panel";
 
 export default async function RepDashboard() {
   const user = await currentUser();
@@ -59,6 +60,11 @@ export default async function RepDashboard() {
             {accounts.length} accounts · {deals.length} open deals · {pendingOffers.length} offers in approval
           </p>
         </div>
+      </div>
+
+      {/* AI-assisted intake — demo opener */}
+      <div className="mt-6">
+        <IntakePanel />
       </div>
 
       {/* At-risk callout */}

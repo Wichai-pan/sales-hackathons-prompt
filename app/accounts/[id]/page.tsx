@@ -2,6 +2,7 @@
 // Account summary + contacts + open deals + active cases + offers + activity timeline + notes,
 // with a slot for the AI Next Best Action panel (wired live in SA-O4).
 
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
@@ -11,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
-import { NbaPanel } from "@/components/nba-panel";
+import { NbaPanel, NbaSkeleton } from "@/components/nba-panel";
 import { addAccountNote } from "./actions";
 
 const PRIORITY_VARIANT: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
@@ -215,8 +216,11 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* AI Next Best Action — wired live in SA-O4 */}
-          <NbaPanel accountId={account.id} />
+          {/* AI Next Best Action — streamed via Suspense so the page paints instantly
+              while the LLM (a few seconds) resolves in the background. */}
+          <Suspense fallback={<NbaSkeleton />}>
+            <NbaPanel accountId={account.id} />
+          </Suspense>
 
           {/* Contacts */}
           <Card>
