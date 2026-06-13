@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Nav } from "@/components/nav";
+import { AiAssistant } from "@/components/ai-assistant";
 
 export const metadata: Metadata = {
   title: "HMD Secure CRM",
@@ -13,6 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen bg-background antialiased">
         <Nav />
         <div className="mx-auto max-w-6xl px-4 py-6">{children}</div>
+        <AiAssistant />
       </body>
     </html>
   );
