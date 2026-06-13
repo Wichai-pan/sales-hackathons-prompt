@@ -1,0 +1,48 @@
+schema: 1
+event:
+  name: "Sales Hackathon 2026 — HMD"
+  deadline_utc: "2026-06-14T12:00:00Z"   # Sun 15:00 Europe/Helsinki
+  freeze_hours: 3                          # code-freeze window before deadline -> 2026-06-14T09:00:00Z
+  phase: ideation                          # setup | ideation | build | freeze | submitted
+  submission_url: "https://prompthack.aaltoes.com/sales-2026"
+  demo_minutes: 3
+tracks:
+  - name: "HMD"
+    prizes: "€1,000 cash"
+    judges: "TBD"
+    notes: "Build an AI-native CRM for HMD Secure. Deliverable: working web app + short demo. Strict no late. 3 teams on this challenge."
+  - name: "Immersive"
+    prizes: "TBD"
+    judges: "TBD"
+    notes: "Other challenge provider. Not chosen."
+selected_track: "HMD"
+rubric:
+  criteria:
+    - name: "P0 features all functional"
+      weight: "gate"
+      notes: "All 10 P0 must work or it counts as a failed submission."
+    - name: "8-step demo line walkable by untrained user"
+      weight: "high"
+      notes: "Judges walk a new user through the 8-step flow; getting stuck loses points."
+    - name: "Realistic seed data"
+      weight: "med"
+      notes: "Empty DB penalized."
+    - name: "AI-native feel"
+      weight: "med"
+      notes: "AI agents make it feel like an analyst, not data entry."
+team:
+  members:
+    - name: "Owner (kysent0110)"
+      skills: "vibe coding, full-stack"
+      role: "presenter / fullstack"
+    - name: "V"
+      skills: "vibe coding, full-stack"
+      role: "fullstack"
+stack:
+  language: "TypeScript"
+  frontend: "Next.js 15 (App Router) + Tailwind + shadcn/ui"
+  backend: "Next.js server actions / API routes + Prisma ORM"
+  database: "Postgres (Docker)"
+  auth: "Auth.js (NextAuth) — role-based (Rep / TAM / SM / Finance)"
+  ai: "Azure OpenAI SDK"
+  deploy_target: "Frankfurt server 43.165.2.182 (EU region) via Docker Compose"
