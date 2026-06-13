@@ -6,4 +6,10 @@ dist/
 .next/
 .env
 .env.*
+!.env.example
 .agent/
+
+# build / tooling
+/coverage
+*.tsbuildinfo
+next-env.d.ts

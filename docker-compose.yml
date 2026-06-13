@@ -1,0 +1,40 @@
+# HMD Secure CRM — local/demo stack (Next app + Postgres).
+# Azure-portable: Postgres maps to Azure Database for PostgreSQL (NE/WE);
+# the Next app maps to Azure App Service / Container Apps.
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hmd
+      POSTGRES_PASSWORD: hmd
+      POSTGRES_DB: hmd_crm
+    ports:
+      - "5432:5432"
+    volumes:
+      - hmd_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hmd -d hmd_crm"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql://hmd:hmd@db:5432/hmd_crm?schema=public"
+      AUTH_SECRET: "demo-secret-change-me"
+      NEXTAUTH_SECRET: "demo-secret-change-me"
+      NEXTAUTH_URL: "http://localhost:3000"
+      APP_URL: "http://localhost:3000"
+      DEMO_MODE: "true"
+      NODE_ENV: "production"
+    ports:
+      - "3000:3000"
+
+volumes:
+  hmd_pgdata:

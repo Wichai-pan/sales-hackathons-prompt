@@ -1,0 +1,374 @@
+// HMD Secure AI-native CRM — canonical data model (see /BUILD-SPEC.md "Data Model").
+// Postgres + Prisma ONLY. Do not switch to SQLite/Supabase/file db.
+// This schema is V-owned (Stream B). If Owner needs a field, ping V — never edit on two branches.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ----------------------------- Enums -----------------------------
+
+enum Role {
+  REP
+  TAM
+  SALES_MANAGER
+  FINANCE
+}
+
+enum Channel {
+  DIRECT
+  RESELLER
+}
+
+// Pipeline stages (BUILD-SPEC "Pipeline Stages").
+// Reseller deals MUST NOT use CONTRACT_NEGOTIATION (enforced in app logic).
+enum DealStage {
+  INTEREST_SHOWN
+  RFI_ANSWERED
+  RFP_OFFER_GIVEN
+  CUSTOMER_TEST
+  CONTRACT_NEGOTIATION
+  WON
+  LOST
+}
+
+enum DealStatus {
+  OPEN
+  WON
+  LOST
+}
+
+enum CatalogStatus {
+  ACTIVE
+  RETIRED
+}
+
+enum ProviderType {
+  INTERNAL
+  THIRD_PARTY
+}
+
+enum InvoicingModel {
+  ONE_OFF
+  FIXED_TERM
+  MONTHLY_RECURRING
+}
+
+enum CaseStatus {
+  OPEN
+  IN_PROGRESS
+  ESCALATED
+  CLOSED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum NoteParentType {
+  ACCOUNT
+  DEAL
+  CASE
+  OFFER
+}
+
+// Offer approval state machine (BUILD-SPEC "Offer Approval").
+// Draft -> Submitted -> Pending SM -> SM Approved -> Pending Finance -> Finance Approved -> Approved / Rejected.
+enum OfferStatus {
+  DRAFT
+  SUBMITTED
+  PENDING_SM
+  SM_APPROVED
+  PENDING_FINANCE
+  FINANCE_APPROVED
+  APPROVED
+  REJECTED
+}
+
+enum OfferItemType {
+  PRODUCT
+  SERVICE
+}
+
+enum ApprovalStep {
+  SALES_MANAGER
+  FINANCE
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ----------------------------- Models -----------------------------
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  role      Role
+  createdAt DateTime @default(now())
+
+  accountsOwned   Account[]       @relation("AccountOwnerRep")
+  accountsAsTam   Account[]       @relation("AccountAssignedTam")
+  dealsOwned      Deal[]          @relation("DealOwnerRep")
+  casesAssigned   Case[]          @relation("CaseAssignedTam")
+  notes           Note[]          @relation("NoteAuthor")
+  activityEvents  ActivityEvent[] @relation("ActivityActor")
+  offersCreated   Offer[]         @relation("OfferCreatedBy")
+  approvals       Approval[]      @relation("ApprovalApprover")
+  notifications   Notification[]  @relation("NotificationRecipient")
+}
+
+model Account {
+  id           String   @id @default(cuid())
+  name         String
+  region       String
+  segment      String
+  industry     String
+  ownerRepId   String
+  assignedTamId String?
+  status       String   @default("ACTIVE")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  ownerRep    User  @relation("AccountOwnerRep", fields: [ownerRepId], references: [id])
+  assignedTam User? @relation("AccountAssignedTam", fields: [assignedTamId], references: [id])
+
+  contacts       Contact[]
+  deals          Deal[]
+  cases          Case[]
+  offers         Offer[]
+  activityEvents ActivityEvent[]
+
+  @@index([ownerRepId])
+  @@index([assignedTamId])
+}
+
+model Contact {
+  id        String  @id @default(cuid())
+  accountId String
+  name      String
+  title     String?
+  email     String?
+  phone     String?
+  isPrimary Boolean @default(false)
+
+  account       Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  casesAsContact Case[] @relation("CaseCustomerContact")
+
+  @@index([accountId])
+}
+
+model Deal {
+  id              String     @id @default(cuid())
+  accountId       String
+  ownerRepId      String
+  name            String
+  channel         Channel    @default(DIRECT)
+  stage           DealStage  @default(INTEREST_SHOWN)
+  probability     Int        @default(10) // percent 0-100; CONFIGURABLE ASSUMPTION, see lib/forecast.ts
+  expectedCloseDate DateTime?
+  lastActivityAt  DateTime   @default(now())
+  status          DealStatus @default(OPEN)
+  notes           String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  ownerRep User   @relation("DealOwnerRep", fields: [ownerRepId], references: [id])
+
+  forecastPeriods DealForecastPeriod[]
+  offers          Offer[]
+
+  @@index([accountId])
+  @@index([ownerRepId])
+  @@index([stage])
+}
+
+// Time-phased forecast row — NEVER collapse a deal to a single amount (BUILD-SPEC "Deal Forecast").
+// device vs service revenue kept SEPARATE.
+model DealForecastPeriod {
+  id             String   @id @default(cuid())
+  dealId         String
+  periodStart    DateTime
+  periodEnd      DateTime
+  periodLabel    String // e.g. "2026-Q3"
+  deviceUnits    Int      @default(0)
+  deviceRevenue  Float    @default(0)
+  serviceRevenue Float    @default(0)
+  totalRevenue   Float    @default(0)
+  weightedRevenue Float   @default(0)
+
+  deal Deal @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  @@index([dealId])
+  @@index([periodLabel])
+}
+
+model Product {
+  id        String        @id @default(cuid())
+  sku       String        @unique
+  name      String
+  category  String
+  unitPrice Float
+  currency  String        @default("EUR")
+  status    CatalogStatus @default(ACTIVE)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+model Service {
+  id            String         @id @default(cuid())
+  name          String
+  providerType  ProviderType
+  invoicingModel InvoicingModel
+  basePrice     Float
+  currency      String         @default("EUR")
+  status        CatalogStatus  @default(ACTIVE)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  cases Case[]
+}
+
+model Case {
+  id               String     @id @default(cuid())
+  accountId        String
+  serviceId        String?
+  assignedTamId    String?
+  title            String
+  description      String?
+  status           CaseStatus @default(OPEN)
+  priority         Priority   @default(MEDIUM)
+  customerContactId String?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  closedAt         DateTime?
+
+  account         Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  service         Service? @relation(fields: [serviceId], references: [id])
+  assignedTam     User?    @relation("CaseAssignedTam", fields: [assignedTamId], references: [id])
+  customerContact Contact? @relation("CaseCustomerContact", fields: [customerContactId], references: [id])
+
+  @@index([accountId])
+  @@index([assignedTamId])
+  @@index([status])
+}
+
+model Note {
+  id         String         @id @default(cuid())
+  parentType NoteParentType
+  parentId   String
+  authorId   String
+  body       String
+  // Optional internal-vs-working note tier for cases (BUILD-SPEC P1). Default visible to all with access.
+  internal   Boolean        @default(false)
+  createdAt  DateTime       @default(now())
+
+  author User @relation("NoteAuthor", fields: [authorId], references: [id])
+
+  @@index([parentType, parentId])
+}
+
+model ActivityEvent {
+  id               String   @id @default(cuid())
+  accountId        String?
+  actorId          String?
+  type             String
+  summary          String
+  linkedRecordType String?
+  linkedRecordId   String?
+  createdAt        DateTime @default(now())
+
+  account Account? @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  actor   User?    @relation("ActivityActor", fields: [actorId], references: [id])
+
+  @@index([accountId])
+  @@index([createdAt])
+}
+
+model Offer {
+  id                  String      @id @default(cuid())
+  accountId           String
+  dealId              String?
+  version             Int         @default(1)
+  status              OfferStatus @default(DRAFT)
+  subtotal            Float       @default(0)
+  discountPercent     Float       @default(0)
+  discountJustification String?
+  total               Float       @default(0)
+  locked              Boolean     @default(false)
+  createdById         String
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  deal      Deal?   @relation(fields: [dealId], references: [id])
+  createdBy User    @relation("OfferCreatedBy", fields: [createdById], references: [id])
+
+  lineItems OfferLineItem[]
+  approvals Approval[]
+
+  @@index([accountId])
+  @@index([dealId])
+  @@index([status])
+}
+
+// Immutable snapshot of a catalog item at offer time (BUILD-SPEC: retired items stay visible in old offers).
+model OfferLineItem {
+  id               String        @id @default(cuid())
+  offerId          String
+  itemType         OfferItemType
+  itemId           String
+  nameSnapshot     String
+  unitPriceSnapshot Float
+  quantity         Int           @default(1)
+  lineTotal        Float         @default(0)
+
+  offer Offer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  @@index([offerId])
+}
+
+model Approval {
+  id         String         @id @default(cuid())
+  offerId    String
+  step       ApprovalStep
+  status     ApprovalStatus @default(PENDING)
+  approverId String?
+  comment    String?
+  createdAt  DateTime       @default(now())
+  decidedAt  DateTime?
+
+  offer    Offer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  approver User? @relation("ApprovalApprover", fields: [approverId], references: [id])
+
+  @@index([offerId])
+  @@index([step, status])
+}
+
+model Notification {
+  id               String    @id @default(cuid())
+  recipientId      String
+  title            String
+  body             String
+  linkedRecordType String?
+  linkedRecordId   String?
+  readAt           DateTime?
+  createdAt        DateTime  @default(now())
+
+  recipient User @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([recipientId])
+  @@index([readAt])
+}
