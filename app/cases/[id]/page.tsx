@@ -17,6 +17,7 @@ import {
 import { Suspense } from "react";
 import { CaseSummaryCard, CaseSummarySkeleton } from "@/components/case-summary-card";
 import { MIN_NOTES_FOR_SUMMARY } from "@/lib/ai/case-summary";
+import { slaStatus } from "@/lib/sla";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -203,6 +204,18 @@ export default async function CaseDetailPage({
                   <dt className="text-xs text-muted-foreground">Assigned TAM</dt>
                   <dd className="font-medium">
                     {kase.assignedTam?.name ?? "Unassigned"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-muted-foreground">SLA due</dt>
+                  <dd className="font-medium">
+                    {kase.dueDate ? kase.dueDate.toISOString().slice(0, 10) : "—"}
+                    {slaStatus(kase.dueDate, kase.closedAt) === "overdue" && (
+                      <Badge variant="destructive" className="ml-2">Overdue</Badge>
+                    )}
+                    {slaStatus(kase.dueDate, kase.closedAt) === "approaching" && (
+                      <Badge variant="secondary" className="ml-2">Due soon</Badge>
+                    )}
                   </dd>
                 </div>
               </dl>

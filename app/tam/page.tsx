@@ -7,6 +7,7 @@ import type { CaseStatus, Priority } from "@prisma/client";
 import { currentUser } from "@/lib/session";
 import { casesForTam } from "@/lib/cases";
 import { daysSince } from "@/lib/utils";
+import { slaStatus, slaLabel } from "@/lib/sla";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
@@ -31,6 +32,14 @@ function priorityBadge(priority: Priority) {
       ? "secondary"
       : "outline";
   return <Badge variant={variant as never}>{priority}</Badge>;
+}
+
+function slaBadge(dueDate: Date | null, closedAt: Date | null) {
+  const s = slaStatus(dueDate, closedAt);
+  if (s === "none") return <span className="text-muted-foreground">—</span>;
+  if (s === "overdue") return <Badge variant="destructive">{slaLabel(s)}</Badge>;
+  if (s === "approaching") return <Badge variant="secondary">{slaLabel(s)}</Badge>;
+  return <span className="text-muted-foreground">{slaLabel(s)}</span>;
 }
 
 function statusBadge(status: CaseStatus) {
@@ -133,6 +142,7 @@ export default async function TamDashboardPage({
                   <TH>Service</TH>
                   <TH>Priority</TH>
                   <TH>Status</TH>
+                  <TH>SLA</TH>
                   <TH className="text-right">Age</TH>
                 </TR>
               </THead>
@@ -155,6 +165,7 @@ export default async function TamDashboardPage({
                       </TD>
                       <TD>{priorityBadge(c.priority)}</TD>
                       <TD>{statusBadge(c.status)}</TD>
+                      <TD>{slaBadge(c.dueDate, c.closedAt)}</TD>
                       <TD className="text-right tabular-nums text-muted-foreground">
                         {age}d
                       </TD>

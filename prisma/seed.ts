@@ -302,9 +302,13 @@ async function main() {
     { account: "RheinWerk Manufacturing", service: "Secure Device Management", tam: lena.id, title: "Warehouse Wi-Fi handoff drops", description: "Devices drop between APs.", status: "CLOSED", priority: "MEDIUM", ageDays: 22, closedDaysAgo: 6 },
     { account: "FinGov Mobility", service: "MDM Integration Support", tam: timo.id, title: "SSO token expiry too aggressive", description: "Users re-auth too often.", status: "OPEN", priority: "MEDIUM", ageDays: 10 },
   ];
+  // SLA window in days by priority (mirrors lib/sla.ts SLA_DAYS) — P2 #18.
+  const SLA_DAYS: Record<string, number> = { CRITICAL: 2, HIGH: 4, MEDIUM: 8, LOW: 15 };
   const createdCases: { id: string; tam: string; ageDays: number }[] = [];
   for (const c of caseSpecs) {
     const acc = byAccount(c.account);
+    const createdAt = daysAgo(c.ageDays);
+    const dueDate = new Date(createdAt.getTime() + (SLA_DAYS[c.priority] ?? 8) * 86400000);
     const created = await prisma.case.create({
       data: {
         accountId: acc.id,
@@ -315,7 +319,8 @@ async function main() {
         description: c.description,
         status: c.status,
         priority: c.priority,
-        createdAt: daysAgo(c.ageDays),
+        createdAt,
+        dueDate,
         closedAt: c.closedDaysAgo != null ? daysAgo(c.closedDaysAgo) : null,
       },
     });
