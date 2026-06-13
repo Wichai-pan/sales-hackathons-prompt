@@ -25,13 +25,14 @@
 ssh frankfurt
 cd /opt/hmd-crm
 git clone https://github.com/Wichai-pan/sales-hackathons-prompt.git . # or git pull
-cp .env.example .env   # fill DATABASE_URL (internal), AUTH_SECRET, APP_URL=http://43.165.2.182:3000, DEMO_MODE=true, Azure OpenAI if available
+cp .env.example .env   # fill DATABASE_URL (internal), AUTH_SECRET, APP_URL=http://43.165.2.182:3000, DEMO_MODE=true,
+                       # FEATHERLESS_API_KEY=<team key>, FEATHERLESS_MODEL=Qwen/Qwen2.5-7B-Instruct (NOT Azure)
 docker compose up -d --build   # if OOM: add swap first, or build locally
 # verify: curl localhost:3000 ; demo at http://43.165.2.182:3000
 ```
 
 ## TODO / risks
 
-- AZURE OPENAI creds = TBD (AI has deterministic fallback; non-blocking).
+- LLM provider = Featherless (team HAS key), NOT Azure (no access). OpenAI-compatible. AI has deterministic fallback regardless.
 - Build OOM risk on 0.5Gi free RAM → Owner will add temporary swap or build the image off-box if `compose up --build` fails.
 - Demo is served over plain HTTP on :3000 (fine for hackathon). HTTPS/domain not needed.

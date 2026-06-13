@@ -45,5 +45,5 @@ stack:
   backend: "Next.js server actions / API routes + Prisma ORM"
   database: "Postgres (Docker)"
   auth: "Auth.js (NextAuth) — role-based (Rep / TAM / SM / Finance)"
-  ai: "Azure OpenAI SDK"
+  ai: "Featherless (OpenAI-compatible, https://api.featherless.ai/v1, team has key) — NOT Azure OpenAI (no access). Default model Qwen/Qwen2.5-7B-Instruct. Every AI feature also has deterministic fallback. Production aspiration = Azure OpenAI EU."
   deploy_target: "Frankfurt server 43.165.2.182 (EU region) via Docker Compose"

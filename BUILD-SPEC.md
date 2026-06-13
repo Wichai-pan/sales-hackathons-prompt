@@ -38,7 +38,7 @@ Use this stack unless the human explicitly overrides it:
 - Auth.js / NextAuth Microsoft Entra provider if Entra environment variables are available
 - Demo role switch fallback using seeded users and a server-side session cookie
 - In-app notifications stored in PostgreSQL and refreshed through normal server actions/API calls
-- Azure OpenAI through a server-only route or action, with deterministic fallback when credentials are missing
+- LLM via Featherless (OpenAI-compatible) through a server-only route or action, with deterministic fallback when the key/model is unavailable (team has a Featherless key; NO Azure access)
 - Docker Compose for local/demo deployment with Next.js app + PostgreSQL
 
 Why this stack:
@@ -66,10 +66,13 @@ Required environment variables:
 - AZURE_AD_CLIENT_ID, optional for real Entra auth
 - AZURE_AD_CLIENT_SECRET, optional for real Entra auth
 - AZURE_AD_TENANT_ID, optional for real Entra auth
-- AZURE_OPENAI_ENDPOINT, optional for AI
-- AZURE_OPENAI_API_KEY, optional for AI
-- AZURE_OPENAI_DEPLOYMENT, optional for AI
+- FEATHERLESS_API_KEY, for AI (team HAS this — Featherless, OpenAI-compatible). AI layer is Owner's.
+- FEATHERLESS_MODEL, optional, default "Qwen/Qwen2.5-7B-Instruct"
+- FEATHERLESS_BASE_URL, optional, default "https://api.featherless.ai/v1"
 - DEMO_MODE=true when using role switch fallback
+- NOTE: Azure OpenAI / Entra are the brief's stated platform but the team has NO Azure access — we use
+  Featherless for LLM calls + a demo role-switch for auth. Documented as an assumption. Every AI feature
+  keeps a deterministic fallback so it works even if the LLM is unreachable.
 
 ## Product Goal
 

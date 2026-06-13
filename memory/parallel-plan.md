@@ -60,6 +60,6 @@ The 7-step demo path (pitch-spec.md) must run end-to-end on `main` before ANYONE
 
 ## Known blockers / TBD
 
-- Azure OpenAI creds = TBD → every AI feature MUST ship a deterministic fallback (BUILD-SPEC says so), so a missing key never dead-ends the demo.
+- LLM provider = Featherless (OpenAI-compatible, team HAS key), NOT Azure (no access). Every AI feature STILL ships a deterministic fallback (BUILD-SPEC), so a model/network failure never dead-ends the demo. AI client = `lib/ai/client.ts` (Owner, pre-drafted in .agent/ai-draft/).
 - Real Entra SSO = deferred → demo role-switch is the path; wire SSO only if everything else is done.
 - Deploy target = Frankfurt 43.165.2.182 (Owner owns; use the `frankfurt` skill). EU region satisfies data residency.

@@ -16,7 +16,7 @@ schema field, ping V.
 
 - Bring up the Frankfurt server (use the `frankfurt` skill, 43.165.2.182). Install Docker + Compose.
 - Prepare `.env` (DATABASE_URL for the Postgres in compose, AUTH_SECRET, APP_URL, DEMO_MODE=true).
-- Obtain/record Azure OpenAI creds if available (AZURE_OPENAI_ENDPOINT/API_KEY/DEPLOYMENT). If not → fine, AI ships with deterministic fallback.
+- LLM = Featherless (team has key), NOT Azure. Put FEATHERLESS_API_KEY + FEATHERLESS_MODEL (Qwen/Qwen2.5-7B-Instruct) + FEATHERLESS_BASE_URL in .env. AI layer pre-drafted in .agent/ai-draft/ (client/intake/nba + INTEGRATION.md).
 - Once V pushes foundation: `git clone` / pull, `docker compose up` smoke test on Frankfurt, confirm seed loads, get a public demo URL.
 
 ### WAVE 1 — after foundation lands, spawn up to 4 subagents, each branch `feat/owner-<slice>`
