@@ -2,6 +2,7 @@
 // Real Entra ID SSO is deferred (BUILD-SPEC). This is the demo auth path.
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { setDemoUser, dashboardPathForRole } from "@/lib/session";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +28,10 @@ async function switchTo(formData: FormData) {
   "use server";
   const userId = String(formData.get("userId"));
   await setDemoUser(userId);
+  // The active user just changed — bust the cache for every route under the root layout so the
+  // new role sees fresh per-user data everywhere (approval queues, notifications, dashboards),
+  // never a client-router-cached view from the previous role. Critical for the role-switch-heavy demo.
+  revalidatePath("/", "layout");
   // Land each role on their own dashboard (the Rep dashboard hosts the AI intake HERO).
   const user = await prisma.user.findUnique({ where: { id: userId } });
   redirect(user ? dashboardPathForRole(user.role) : "/");
