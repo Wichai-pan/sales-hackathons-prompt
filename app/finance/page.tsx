@@ -10,6 +10,8 @@ import { prisma } from "@/lib/db";
 import { currentUser } from "@/lib/session";
 import { formatEUR } from "@/lib/utils";
 import { threeYearForecast } from "@/lib/reporting";
+import { Suspense } from "react";
+import { ForecastNarrativeCard, ForecastNarrativeSkeleton } from "@/components/forecast-narrative-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -86,6 +88,11 @@ export default async function FinancePage({
           </Link>
         </div>
       </section>
+
+      {/* AI pipeline-health narrative (P2 #23) */}
+      <Suspense fallback={<ForecastNarrativeSkeleton />}>
+        <ForecastNarrativeCard />
+      </Suspense>
 
       {/* Grand-total KPIs */}
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
