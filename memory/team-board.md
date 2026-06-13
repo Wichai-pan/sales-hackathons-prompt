@@ -20,7 +20,7 @@
 |---|---|---|---|
 | WAVE 0 server prep: Frankfurt Docker + env + Azure OpenAI creds + smoke test | Owner | todo | parallel, no code dep |
 | SA-O1 Rep dashboard + Account 360 page | Owner | done | merged ab46225; pages 200 w/ seed; NBA panel live (rules) |
-| SA-O2 Deal create/edit + 12-month forecast input + channel stage rules | Owner | todo | feat/owner-deal |
+| SA-O2 Deal create/edit + 12-month forecast input + channel stage rules | Owner | done | /deals/new + /deals/[id]; reseller rule; 3-yr rows; verified |
 | SA-O3 Offer builder (catalog→snapshot→discount+justification→submit) | Owner | todo | feat/owner-offer |
 | SA-O4 AI layer: intake + NBA + forecast narrative + 3 query chips | Owner | todo | feat/owner-ai |
 | WAVE 2 demo hardening + README + deck | Owner | todo | start ≤ T-6h |
