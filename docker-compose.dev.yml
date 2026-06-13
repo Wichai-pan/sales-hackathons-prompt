@@ -1,0 +1,28 @@
+# LOCAL DEV ONLY — a published Postgres for running `next dev` on the HOST.
+# The main docker-compose.yml keeps Postgres INTERNAL (Frankfurt shared box); that is correct
+# for the full app-in-compose deploy where the app reaches db by service name. But when you run
+# `next dev` on the host (run.sh / run.ps1), the host needs a PUBLISHED db on localhost:5432.
+# Usage: docker compose -f docker-compose.dev.yml up -d   (run.sh/run.ps1 do this for you)
+# Separate project name + volume so it never collides with the full-stack compose.
+name: hmd-crm-dev
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-hmd}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hmd_demo_pw}
+      POSTGRES_DB: ${POSTGRES_DB:-hmd_crm}
+    ports:
+      - "5432:5432" # PUBLISHED to the host so `next dev` can reach localhost:5432
+    volumes:
+      - hmd_pgdata_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hmd} -d ${POSTGRES_DB:-hmd_crm}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  hmd_pgdata_dev:
