@@ -1,20 +1,27 @@
 # HMD Secure CRM — local/demo stack (Next app + Postgres).
-# Azure-portable: Postgres maps to Azure Database for PostgreSQL (NE/WE);
-# the Next app maps to Azure App Service / Container Apps.
+# Constraints from memory/deploy-notes.md (Frankfurt is a SHARED box):
+#   - explicit project name `hmd-crm` so network/volumes never collide with the live `jl_*` project
+#   - app on host port 3000 only (never 80)
+#   - Postgres stays INTERNAL to the compose network (not published to the host)
+#   - slim postgres:16-alpine image; production (standalone) build to keep RAM low
+# Azure-portable: Postgres -> Azure Database for PostgreSQL; app -> App Service / Container Apps.
+name: hmd-crm
+
 services:
   db:
-    image: postgres:16
+    image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: hmd
-      POSTGRES_PASSWORD: hmd
-      POSTGRES_DB: hmd_crm
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${POSTGRES_USER:-hmd}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hmd_demo_pw}
+      POSTGRES_DB: ${POSTGRES_DB:-hmd_crm}
+    # INTERNAL only — reachable by the app over the compose network as host "db", never published.
+    expose:
+      - "5432"
     volumes:
       - hmd_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U hmd -d hmd_crm"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hmd} -d ${POSTGRES_DB:-hmd_crm}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -25,13 +32,13 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    # Non-secret demo defaults live here; secrets (FEATHERLESS_API_KEY, AUTH_SECRET, POSTGRES_PASSWORD)
+    # come from .env. `environment` below overrides .env where the compose network differs.
+    env_file:
+      - .env
     environment:
-      DATABASE_URL: "postgresql://hmd:hmd@db:5432/hmd_crm?schema=public"
-      AUTH_SECRET: "demo-secret-change-me"
-      NEXTAUTH_SECRET: "demo-secret-change-me"
-      NEXTAUTH_URL: "http://localhost:3000"
-      APP_URL: "http://localhost:3000"
-      DEMO_MODE: "true"
+      # Inside the compose network the app reaches Postgres by service name, not localhost.
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-hmd}:${POSTGRES_PASSWORD:-hmd_demo_pw}@db:5432/${POSTGRES_DB:-hmd_crm}?schema=public"
       NODE_ENV: "production"
     ports:
       - "3000:3000"
