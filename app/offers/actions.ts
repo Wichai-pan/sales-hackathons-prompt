@@ -18,8 +18,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { currentUser } from "@/lib/session";
-import { createActivityEvent } from "@/lib/activity";
-import { notify } from "@/lib/notify";
+import { submitForApproval } from "@/lib/approval";
 
 type DraftItem = { itemType: "PRODUCT" | "SERVICE"; itemId: string; nameSnapshot: string; unitPriceSnapshot: number; quantity: number };
 
@@ -60,16 +59,14 @@ export async function createOffer(formData: FormData) {
   const subtotal = items.reduce((s, it) => s + it.unitPriceSnapshot * it.quantity, 0);
   const total = Math.round(subtotal * (1 - discountPercent / 100));
 
-  const submitting = intent === "submit";
-  const needsApproval = submitting && discountPercent > 0;
-
+  // Always create as DRAFT; the state machine (lib/approval.ts, V/SA-V2) owns every transition.
   const offer = await prisma.offer.create({
     data: {
       accountId,
       dealId,
       createdById: user.id,
-      status: needsApproval ? "PENDING_SM" : submitting ? "APPROVED" : "DRAFT",
-      locked: submitting,
+      status: "DRAFT",
+      locked: false,
       subtotal,
       discountPercent,
       discountJustification: discountPercent > 0 ? discountJustification : null,
@@ -87,31 +84,10 @@ export async function createOffer(formData: FormData) {
     },
   });
 
-  if (needsApproval) {
-    await prisma.approval.create({ data: { offerId: offer.id, step: "SALES_MANAGER", status: "PENDING" } });
-    const sms = await prisma.user.findMany({ where: { role: "SALES_MANAGER" } });
-    await Promise.all(
-      sms.map((sm) =>
-        notify({
-          recipientId: sm.id,
-          title: "Offer needs your approval",
-          body: `${user.name} submitted a ${discountPercent}% discounted offer for approval.`,
-          linkedRecordType: "OFFER",
-          linkedRecordId: offer.id,
-        }),
-      ),
-    );
-    await createActivityEvent({
-      accountId, actorId: user.id, type: "offer_submitted",
-      summary: `${user.name} submitted a ${discountPercent}% discounted offer for approval`,
-      linkedRecordType: "OFFER", linkedRecordId: offer.id,
-    });
-  } else if (submitting) {
-    await createActivityEvent({
-      accountId, actorId: user.id, type: "offer_approved",
-      summary: `${user.name} issued an offer (no discount, auto-approved)`,
-      linkedRecordType: "OFFER", linkedRecordId: offer.id,
-    });
+  // Delegate submit to the single-source state machine: discount>0 -> PENDING_SM + notify SMs;
+  // discount==0 -> auto-approved. (Owner builds the offer; V owns the approval chain.)
+  if (intent === "submit") {
+    await submitForApproval(offer.id);
   }
 
   revalidatePath(`/accounts/${accountId}`);
