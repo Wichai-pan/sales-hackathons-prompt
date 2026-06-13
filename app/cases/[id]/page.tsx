@@ -14,6 +14,9 @@ import {
   closeCase,
   escalateCase,
 } from "@/app/cases/actions";
+import { Suspense } from "react";
+import { CaseSummaryCard, CaseSummarySkeleton } from "@/components/case-summary-card";
+import { MIN_NOTES_FOR_SUMMARY } from "@/lib/ai/case-summary";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -155,6 +158,16 @@ export default async function CaseDetailPage({
       <div className="grid gap-6 lg:grid-cols-3">
         {/* ---- Left: details + status control + notes ---- */}
         <div className="space-y-6 lg:col-span-2">
+          {/* AI case summary (P2 #22) — only once the case has accumulated enough notes */}
+          {notes.length >= MIN_NOTES_FOR_SUMMARY && (
+            <Suspense fallback={<CaseSummarySkeleton />}>
+              <CaseSummaryCard
+                title={kase.title}
+                description={kase.description}
+                notes={notes.map((n) => n.body)}
+              />
+            </Suspense>
+          )}
           <Card>
             <CardHeader>
               <CardTitle>Details</CardTitle>

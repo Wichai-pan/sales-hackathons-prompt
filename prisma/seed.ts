@@ -302,9 +302,10 @@ async function main() {
     { account: "RheinWerk Manufacturing", service: "Secure Device Management", tam: lena.id, title: "Warehouse Wi-Fi handoff drops", description: "Devices drop between APs.", status: "CLOSED", priority: "MEDIUM", ageDays: 22, closedDaysAgo: 6 },
     { account: "FinGov Mobility", service: "MDM Integration Support", tam: timo.id, title: "SSO token expiry too aggressive", description: "Users re-auth too often.", status: "OPEN", priority: "MEDIUM", ageDays: 10 },
   ];
+  const createdCases: { id: string; tam: string; ageDays: number }[] = [];
   for (const c of caseSpecs) {
     const acc = byAccount(c.account);
-    await prisma.case.create({
+    const created = await prisma.case.create({
       data: {
         accountId: acc.id,
         serviceId: byService(c.service).id,
@@ -318,6 +319,40 @@ async function main() {
         closedAt: c.closedDaysAgo != null ? daysAgo(c.closedDaysAgo) : null,
       },
     });
+    createdCases.push({ id: created.id, tam: c.tam, ageDays: c.ageDays });
+  }
+
+  // Threaded notes on the first two cases (>=5 each) so the AI case summary (P2 #22) has material.
+  const noteThreads = [
+    [
+      "Customer reports ~40 units failing the MDM compliance check-in.",
+      "Narrowed it down to devices on firmware 4.2.1 only.",
+      "Opened vendor ticket HMD-4471; they suspect a certificate-rotation bug.",
+      "Workaround confirmed: a manual re-enrol clears it temporarily.",
+      "Vendor committed to a hotfix in the next release.",
+      "Rolled the workaround to the worst-affected site; complaints dropping.",
+    ],
+    [
+      "Fleet-wide battery-drain complaints started right after the firmware update.",
+      "Reproduced on a test unit — idle drain roughly doubled.",
+      "Logs point at a background sync loop that never backs off.",
+      "Gave the customer a config to throttle sync as a stopgap.",
+      "Engineering has a candidate fix in QA; targeting next patch.",
+    ],
+  ];
+  for (let i = 0; i < Math.min(2, createdCases.length); i++) {
+    const cc = createdCases[i];
+    for (let j = 0; j < noteThreads[i].length; j++) {
+      await prisma.note.create({
+        data: {
+          parentType: "CASE",
+          parentId: cc.id,
+          authorId: cc.tam,
+          body: noteThreads[i][j],
+          createdAt: daysAgo(Math.max(0, cc.ageDays - j)),
+        },
+      });
+    }
   }
 
   // ----------------------------- Offers (5) in every approval state -----------------------------
