@@ -8,7 +8,7 @@
 
 | Task | Owner | State | Note |
 |---|---|---|---|
-| WAVE 0 foundation: scaffold + full Prisma schema + seed + Docker + run.sh + role-switch + lib helpers | V | todo | BLOCKING — push to main, then signal Owner |
+| WAVE 0 foundation: scaffold + full Prisma schema + seed + Docker + run.sh + role-switch + lib helpers | V | done | Landed on main (fb3aaab), build-green (tsc+next build). Runtime seed verify pending DB. Owner unblocked. |
 | SA-V1 Catalog (product/service CRUD, retire logic, invoicing models) | V | todo | feat/v-catalog |
 | SA-V2 Offer approval state machine + SM/Finance queues + in-app notifications | V | todo | feat/v-approval |
 | SA-V3 TAM case flow (dashboard + detail + notes + close + escalate) | V | todo | feat/v-cases |
