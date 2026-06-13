@@ -115,6 +115,7 @@ export default async function CatalogPage({
                 <TH>Name</TH>
                 <TH>Category</TH>
                 <TH>Unit price</TH>
+                <TH className="text-right">GM %</TH>
                 <TH>Status</TH>
                 <TH className="text-right">Actions</TH>
               </TR>
@@ -122,7 +123,7 @@ export default async function CatalogPage({
             <TBody>
               {visibleProducts.length === 0 && (
                 <TR>
-                  <TD className="text-muted-foreground" colSpan={6}>
+                  <TD className="text-muted-foreground" colSpan={7}>
                     No products to show.
                   </TD>
                 </TR>
@@ -188,6 +189,7 @@ export default async function CatalogPage({
                 <TH>Provider</TH>
                 <TH>Invoicing</TH>
                 <TH>Base price</TH>
+                <TH className="text-right">GM %</TH>
                 <TH>Status</TH>
                 <TH className="text-right">Actions</TH>
               </TR>
@@ -195,7 +197,7 @@ export default async function CatalogPage({
             <TBody>
               {visibleServices.length === 0 && (
                 <TR>
-                  <TD className="text-muted-foreground" colSpan={6}>
+                  <TD className="text-muted-foreground" colSpan={7}>
                     No services to show.
                   </TD>
                 </TR>
@@ -300,6 +302,9 @@ function ProductRow({ product: p }: { product: Product }) {
           {formatEUR(p.unitPrice, p.currency)}
         </div>
       </TD>
+      <TD className="text-right tabular-nums text-muted-foreground">
+        {Math.round(p.gmPercent * 100)}%
+      </TD>
       <TD>
         <StatusBadge status={p.status} />
       </TD>
@@ -391,6 +396,9 @@ function ServiceRow({ service: s }: { service: Service }) {
         <div className="mt-0.5 text-[11px] text-muted-foreground">
           {formatEUR(s.basePrice, s.currency)}
         </div>
+      </TD>
+      <TD className="text-right tabular-nums text-muted-foreground">
+        {Math.round(s.gmPercent * 100)}%
       </TD>
       <TD>
         <StatusBadge status={s.status} />

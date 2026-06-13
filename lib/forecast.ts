@@ -55,6 +55,19 @@ export function weightedRevenue(stageProb: number, totalRevenue: number): number
   return Math.round(totalRevenue * (stageProb / 100));
 }
 
+// ----------------------------- Gross margin (GM) -----------------------------
+// HMD tracks gross margin, not just revenue (their pipeline model has GM per deal + GM% by
+// country). Catalog items carry a real per-item gmPercent; the AGGREGATED forecast (rows
+// aren't item-linked) uses these blended device/service margins — a CONFIGURABLE ASSUMPTION,
+// just like the stage probabilities above.
+export const DEVICE_GM_PCT = 0.35;
+export const SERVICE_GM_PCT = 0.55;
+
+/** Gross margin (€) on a device/service revenue split, using the blended assumptions. */
+export function grossMargin(deviceRevenue: number, serviceRevenue: number): number {
+  return Math.round(deviceRevenue * DEVICE_GM_PCT + serviceRevenue * SERVICE_GM_PCT);
+}
+
 // ----------------------------- Period helpers -----------------------------
 
 export interface Quarter {

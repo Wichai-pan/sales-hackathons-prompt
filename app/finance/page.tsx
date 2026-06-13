@@ -10,6 +10,7 @@ import { prisma } from "@/lib/db";
 import { currentUser } from "@/lib/session";
 import { formatEUR } from "@/lib/utils";
 import { threeYearForecast } from "@/lib/reporting";
+import { grossMargin, DEVICE_GM_PCT, SERVICE_GM_PCT } from "@/lib/forecast";
 import { Suspense } from "react";
 import { ForecastNarrativeCard, ForecastNarrativeSkeleton } from "@/components/forecast-narrative-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,6 +49,7 @@ export default async function FinancePage({
   ]);
 
   const { quarters, totals } = forecast;
+  const gmPct = totals.totalRevenue > 0 ? (totals.grossMargin / totals.totalRevenue) * 100 : 0;
 
   // Build filter links that preserve the other dimension.
   const ownerHref = (id: string) => {
@@ -71,8 +73,9 @@ export default async function FinancePage({
         <div>
           <h1 className="text-2xl font-semibold">Finance</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            3-year time-phased forecast — device and service revenue kept
-            separate, weighted by stage probability.
+            3-year time-phased forecast — net sales split device vs service,
+            gross margin (GM), and stage-weighted pipeline. Maps to HMD&apos;s funnel:
+            Opportunity → Pipeline → Committed → Confirmed.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -101,7 +104,7 @@ export default async function FinancePage({
       </Suspense>
 
       {/* Grand-total KPIs */}
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-semibold tabular-nums">
@@ -123,7 +126,21 @@ export default async function FinancePage({
             <div className="text-2xl font-semibold tabular-nums">
               {formatEUR(totals.totalRevenue)}
             </div>
-            <div className="text-xs text-muted-foreground">Total (unweighted)</div>
+            <div className="text-xs text-muted-foreground">Net sales (total)</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-2xl font-semibold tabular-nums">
+              {formatEUR(totals.grossMargin)}
+            </div>
+            <div className="text-xs text-muted-foreground">Gross margin</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-2xl font-semibold tabular-nums">{gmPct.toFixed(1)}%</div>
+            <div className="text-xs text-muted-foreground">GM %</div>
           </CardContent>
         </Card>
         <Card>
@@ -193,7 +210,8 @@ export default async function FinancePage({
                   <TH className="text-right">Device units</TH>
                   <TH className="text-right">Device €</TH>
                   <TH className="text-right">Service €</TH>
-                  <TH className="text-right">Total €</TH>
+                  <TH className="text-right">Net sales €</TH>
+                  <TH className="text-right">GM €</TH>
                   <TH className="text-right">Weighted €</TH>
                 </TR>
               </THead>
@@ -210,6 +228,9 @@ export default async function FinancePage({
                     </TD>
                     <TD className="text-right tabular-nums text-muted-foreground">
                       {formatEUR(q.totalRevenue)}
+                    </TD>
+                    <TD className="text-right tabular-nums">
+                      {formatEUR(grossMargin(q.deviceRevenue, q.serviceRevenue))}
                     </TD>
                     <TD className="text-right font-semibold tabular-nums">
                       {formatEUR(q.weightedRevenue)}
@@ -229,6 +250,9 @@ export default async function FinancePage({
                     {formatEUR(totals.totalRevenue)}
                   </TD>
                   <TD className="text-right tabular-nums">
+                    {formatEUR(totals.grossMargin)}
+                  </TD>
+                  <TD className="text-right tabular-nums">
                     {formatEUR(totals.weightedRevenue)}
                   </TD>
                 </TR>
@@ -236,8 +260,9 @@ export default async function FinancePage({
             </Table>
           )}
           <p className="mt-3 text-xs text-muted-foreground">
-            Showing {quarters.length} quarter(s). Forecast is time-phased — never
-            a single deal amount.
+            Showing {quarters.length} quarter(s). Forecast is time-phased — never a
+            single deal amount. GM uses blended device {Math.round(DEVICE_GM_PCT * 100)}% /
+            service {Math.round(SERVICE_GM_PCT * 100)}% margins (configurable assumption).
           </p>
         </CardContent>
       </Card>

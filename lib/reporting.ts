@@ -10,6 +10,7 @@ import { prisma } from "@/lib/db";
 import {
   aggregateByQuarter,
   weightedRevenue,
+  grossMargin,
   STAGE_PROBABILITY,
   STAGE_LABEL,
   type ForecastRow,
@@ -28,6 +29,7 @@ export interface ThreeYearForecast {
     serviceRevenue: number;
     totalRevenue: number;
     weightedRevenue: number;
+    grossMargin: number;
   };
 }
 
@@ -84,7 +86,13 @@ export async function threeYearForecast(
     }
   );
 
-  return { quarters, totals };
+  return {
+    quarters,
+    totals: {
+      ...totals,
+      grossMargin: grossMargin(totals.deviceRevenue, totals.serviceRevenue),
+    },
+  };
 }
 
 // ----------------------------- Pipeline weighting helpers ------------------

@@ -233,6 +233,7 @@ model Product {
   name      String
   category  String
   unitPrice Float
+  gmPercent Float         @default(0.35) // gross margin as a fraction 0..1 (HMD tracks GM, not just revenue)
   currency  String        @default("EUR")
   status    CatalogStatus @default(ACTIVE)
   createdAt DateTime      @default(now())
@@ -245,6 +246,7 @@ model Service {
   providerType  ProviderType
   invoicingModel InvoicingModel
   basePrice     Float
+  gmPercent     Float          @default(0.55) // gross margin as a fraction 0..1 (HMD tracks GM)
   currency      String         @default("EUR")
   status        CatalogStatus  @default(ACTIVE)
   createdAt     DateTime       @default(now())

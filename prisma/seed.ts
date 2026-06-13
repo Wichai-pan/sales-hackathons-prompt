@@ -119,15 +119,15 @@ async function main() {
 
   // ----------------------------- Products (catalog) -----------------------------
   const productSpecs = [
-    { sku: "HMD-PRO-001", name: "HMD Secure Pro Device", category: "Device", unitPrice: 749 },
-    { sku: "HMD-RUG-002", name: "HMD Secure Rugged Device", category: "Device", unitPrice: 899 },
-    { sku: "HMD-TAB-003", name: "HMD Secure Tablet", category: "Device", unitPrice: 629 },
-    { sku: "HMD-LITE-004", name: "HMD Secure Lite Device", category: "Device", unitPrice: 449 },
-    { sku: "HMD-ENR-010", name: "Device Enrollment Pack", category: "Accessory", unitPrice: 39 },
-    { sku: "HMD-WAR-011", name: "Extended Warranty", category: "Accessory", unitPrice: 89 },
-    { sku: "HMD-DOCK-012", name: "USB-C Secure Dock", category: "Accessory", unitPrice: 119 },
+    { sku: "HMD-PRO-001", name: "HMD Secure Pro Device", category: "Device", unitPrice: 749, gmPercent: 0.35 },
+    { sku: "HMD-RUG-002", name: "HMD Secure Rugged Device", category: "Device", unitPrice: 899, gmPercent: 0.4 },
+    { sku: "HMD-TAB-003", name: "HMD Secure Tablet", category: "Device", unitPrice: 629, gmPercent: 0.33 },
+    { sku: "HMD-LITE-004", name: "HMD Secure Lite Device", category: "Device", unitPrice: 449, gmPercent: 0.3 },
+    { sku: "HMD-ENR-010", name: "Device Enrollment Pack", category: "Accessory", unitPrice: 39, gmPercent: 0.55 },
+    { sku: "HMD-WAR-011", name: "Extended Warranty", category: "Accessory", unitPrice: 89, gmPercent: 0.7 },
+    { sku: "HMD-DOCK-012", name: "USB-C Secure Dock", category: "Accessory", unitPrice: 119, gmPercent: 0.45 },
     // RETIRED: must be hidden from NEW offers but stay visible in historical snapshots.
-    { sku: "HMD-LEG-099", name: "HMD Legacy Secure Phone", category: "Device", unitPrice: 399, status: "RETIRED" as const },
+    { sku: "HMD-LEG-099", name: "HMD Legacy Secure Phone", category: "Device", unitPrice: 399, gmPercent: 0.25, status: "RETIRED" as const },
   ];
   const products: Product[] = [];
   for (const p of productSpecs) {
@@ -138,6 +138,7 @@ async function main() {
           name: p.name,
           category: p.category,
           unitPrice: p.unitPrice,
+          gmPercent: p.gmPercent,
           currency: "EUR",
           status: p.status ?? "ACTIVE",
         },
@@ -148,12 +149,12 @@ async function main() {
 
   // ----------------------------- Services (catalog) — all 3 invoicing models -----------------------------
   const serviceSpecs = [
-    { name: "Secure Device Management", providerType: "INTERNAL" as const, invoicingModel: "MONTHLY_RECURRING" as const, basePrice: 9 },
-    { name: "24/7 Premium Support", providerType: "INTERNAL" as const, invoicingModel: "MONTHLY_RECURRING" as const, basePrice: 14 },
-    { name: "Deployment Workshop", providerType: "INTERNAL" as const, invoicingModel: "ONE_OFF" as const, basePrice: 4500 },
-    { name: "Compliance Audit Package", providerType: "THIRD_PARTY" as const, invoicingModel: "FIXED_TERM" as const, basePrice: 12000 },
-    { name: "MDM Integration Support", providerType: "INTERNAL" as const, invoicingModel: "FIXED_TERM" as const, basePrice: 8000 },
-    { name: "Third-party Incident Response", providerType: "THIRD_PARTY" as const, invoicingModel: "ONE_OFF" as const, basePrice: 6500 },
+    { name: "Secure Device Management", providerType: "INTERNAL" as const, invoicingModel: "MONTHLY_RECURRING" as const, basePrice: 9, gmPercent: 0.72 },
+    { name: "24/7 Premium Support", providerType: "INTERNAL" as const, invoicingModel: "MONTHLY_RECURRING" as const, basePrice: 14, gmPercent: 0.65 },
+    { name: "Deployment Workshop", providerType: "INTERNAL" as const, invoicingModel: "ONE_OFF" as const, basePrice: 4500, gmPercent: 0.55 },
+    { name: "Compliance Audit Package", providerType: "THIRD_PARTY" as const, invoicingModel: "FIXED_TERM" as const, basePrice: 12000, gmPercent: 0.3 },
+    { name: "MDM Integration Support", providerType: "INTERNAL" as const, invoicingModel: "FIXED_TERM" as const, basePrice: 8000, gmPercent: 0.6 },
+    { name: "Third-party Incident Response", providerType: "THIRD_PARTY" as const, invoicingModel: "ONE_OFF" as const, basePrice: 6500, gmPercent: 0.28 },
   ];
   const services: Service[] = [];
   for (const s of serviceSpecs) {
