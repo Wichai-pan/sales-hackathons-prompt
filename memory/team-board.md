@@ -24,7 +24,9 @@
 | SA-O2 Deal create/edit + 12-month forecast input + channel stage rules | Owner | done | /deals/new + /deals/[id]; reseller rule; 3-yr rows; verified |
 | SA-O3 Offer builder (catalog→snapshot→discount+justification→submit) | Owner | done | /offers/new + /offers/[id]; submit→PENDING_SM+notify SM; verified |
 | SA-O4 AI layer: intake + NBA (forecast narrative + chips pending) | Owner | done | Featherless live; intake+NBA verified; offer submit delegated to V state machine |
-| WAVE 2 demo hardening + README + deck | Owner | todo | start ≤ T-6h |
+| Record demo video (demo/script.md) | Owner | todo | live URL verified; record from http://43.165.2.182:3000 |
+| Build deck (hackathon-deck-builder) | Owner | todo | T-6h |
+| Submit (email) via hackathon-closer | Owner | todo | Sun 15:00 Helsinki |
 
 ## Pair
 
