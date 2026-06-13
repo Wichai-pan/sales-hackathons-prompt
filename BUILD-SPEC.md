@@ -17,6 +17,7 @@ Important sources and interpretation:
 - Full brief PDF: https://prompthack.aaltoes.com/briefs/hmd-sales-hackathon-brief.pdf
 - Deadline shown by the challenge page: Sunday 15:00. Given current event timing, treat this as 2026-06-14 15:00 Europe/Helsinki.
 - Deliverable: working web app plus short demo.
+- SUBMISSION = EMAIL (not a web upload): send to anssi.ronnemaa@hmdglobal.com AND janne.lehtosalo@hmdglobal.com (auto-CC meri.heikkinen@aaltoes.com, olivia.ronnemaa@aaltoes.com) by Sun 15:00 Helsinki. Plan the email + links (repo, deployed demo URL, demo video) before freeze.
 - Core interpretation: Build HMD Secure's first shared source of truth for accounts, contacts, deals, cases, service history, offers, approvals, and 3-year weighted forecast. AI should act as an analyst layer on top of structured CRM data.
 
 Non-negotiable warning:
@@ -122,6 +123,8 @@ The official "what good looks like" scenario is the main demo path. Build so a n
 
 This flow must work end to end with realistic seed data.
 
+DEMO OPENER (HERO, team addition, precedes step 1): Rep pastes an email/notes blob → AI-assisted intake renders a draft preview (contact + deal + case + task) → Rep clicks "Apply selected updates" → the records created here feed straight into steps 2–3 above. This makes the demo start with the wow beat and removes manual typing from the opening.
+
 ## Scope Priority
 
 ### P0: Must Have
@@ -192,6 +195,10 @@ Build P1 after P0 and demo path are working.
   - Cases by status/service.
   - Deals by stage/owner.
   - Close rate if feasible from seed data.
+- Preset query chips (lightweight conversational-query substitute — NOT open-ended NLP): 3 one-click saved views — "At-risk enterprise deals in DACH", "Offers pending Finance", "Cases blocking customer tests". Each just applies a predefined filter; demo-visible.
+- Deal/case reassignment (Sales Manager): reassign a deal to another rep or a case to another TAM (persona need from brief). Records an activity event + notifies the new owner.
+- Manager pipeline time-granularity switch: toggle the weighted pipeline/forecast view between quarter / half-year / full-year (brief persona need).
+- Note visibility tiers: optionally distinguish "internal note (visible to sales/TAM)" vs "working/tech note" on cases (brief TAM need). Minimal: a boolean/enum on Note; do not over-engineer.
 
 ### P2: Nice To Have
 
@@ -424,9 +431,28 @@ Retired items should not appear in new offers but should remain visible in histo
 
 ## AI Requirements
 
-Implement at least one visible AI feature.
+Three HERO AI features get full polish — they are the differentiators and the demo's wow beats:
+(1) AI-assisted intake, (2) AI Next Best Action, (3) 3-yr weighted forecast (the forecast itself lives under Manager/Finance views; AI forecast narrative sits on top of it). Build all after the P0 CRM core works.
 
-### AI Next Best Action
+### AI-Assisted Intake (HERO — demo opener)
+
+This is a TEAM ADDITION not in the original brief feature list, kept as the 3rd HERO and the demo's opening beat. It directly embodies the brief's thesis: "less like data entry, more like having an analyst on the team."
+
+Location: Rep dashboard (a "Paste email / notes" entry point) and/or account page.
+
+Flow:
+- Rep pastes a raw email thread or meeting notes into a textbox.
+- A server-only AI route extracts STRUCTURED DRAFT updates: candidate new/updated contact(s), a deal (with channel guess, stage guess, expected close), a case if a problem is mentioned, and a follow-up task/note.
+- The UI renders these as a PREVIEW with per-item checkboxes — nothing is written yet.
+- Rep reviews, edits if needed, and clicks "Apply selected updates" → only then are real CRM records created via the normal server actions (same code paths as manual create).
+
+Hard rules:
+- This is "AI-assisted intake", NOT auto-entry. The preview→Apply gate is mandatory (de-risks extraction errors and keeps a human in the loop).
+- NO Microsoft Graph / inbox integration — pure text paste in, structured draft out. This is DISTINCT from the P2 "email-to-case via Microsoft Graph" item (which is inbound mailbox automation).
+- AI output is a draft proposal only; it must not silently mutate records.
+- Deterministic fallback when Azure OpenAI is unavailable: a simple rules/regex extractor (find an email address → contact; keywords like "issue/down/broken" → case; "interested/evaluate/pilot" → deal at an early stage) so the demo never dead-ends.
+
+### AI Next Best Action (HERO)
 Location: Account detail page.
 Input context: Account summary; Recent activity events; Open deals and stages; Active cases; Latest notes; Offer approval status.
 Output: One recommended next action; Reasoning in 2-3 bullet points; Optional draft email or call prep note.
@@ -473,7 +499,7 @@ Follow this order. Do not jump to AI first.
 - **Phase 5 Offer Builder & Approval**: catalog selection; offer snapshot; submit discounted offer w/ justification; lock pending; approval records + notifications; SM and Finance approval screens. Acceptance: discounted offer Rep→SM→Finance in correct order; Finance cannot approve before SM; Rep gets final notification.
 - **Phase 6 TAM Case Flow**: case detail; add notes; close case; update timeline. Acceptance: TAM reads history, adds note, closes assigned case.
 - **Phase 7 Manager & Finance Forecast Views**: stalled/overdue indicators; 3-year weighted pipeline; quarterly Finance forecast; separate device/service revenue. Acceptance: Manager sees stalled deals + 3-yr weighted pipeline immediately; Finance sees 3-yr quarterly forecast without asking sales.
-- **Phase 8 AI Layer**: AI next best action on account page; deterministic fallback; optional forecast narrative. Acceptance: account page always shows useful next best action, even without AI credentials.
+- **Phase 8 AI Layer**: (a) AI next best action on account page + deterministic fallback; (b) AI-assisted intake (paste→draft preview→Apply) + rules fallback — HERO demo opener; (c) optional AI forecast narrative. Acceptance: account page always shows useful next best action even without AI credentials; intake produces an editable draft preview and only writes records on Apply; both degrade gracefully with no API key.
 - **Phase 9 Polish & Demo Hardening**: fix broken states; loading/error/empty states; make demo path obvious; README (setup/seed/run/demo script/assumptions); run tests/lint/build.
 
 ## Acceptance Checklist
@@ -514,6 +540,7 @@ Before final delivery, manually verify this exact script:
 - [ ] Finance sees quarterly 3-year forecast.
 - [ ] Finance sees device vs service revenue.
 - [ ] Account page displays AI next best action.
+- [ ] AI-assisted intake: paste email → draft preview shown → Apply creates records (and works with rules fallback, no API key).
 - [ ] AI fallback works if no API key is configured.
 - [ ] Build passes.
 - [ ] README includes demo script and assumptions.
@@ -546,7 +573,7 @@ Project name; what the app does; tech stack; install; seed; run locally; run wit
 "We built HMD Secure's first shared source of truth for accounts, service history, offers, approvals, and a 3-year weighted forecast, with AI acting as the analyst layer on top."
 
 Before: email, Excel, no visibility, no service history, no forecast.
-After: every role works from one system. Sales sees account context and creates deals/offers. TAM closes service cases with full history. Manager sees stalled deals and weighted pipeline. Finance sees time-phased forecast by quarter. AI reduces analysis burden with next best action and forecast summary.
+After: every role works from one system. A rep pastes a messy email thread and AI drafts the CRM updates in seconds (AI-assisted intake). Sales sees account context and creates deals/offers. TAM closes service cases with full history. Manager sees stalled deals and weighted pipeline. Finance sees time-phased forecast by quarter. AI reduces analysis burden with intake, next best action, and forecast summary.
 
 ## Critical Do Not Deviate Rules
 

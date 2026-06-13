@@ -5,6 +5,7 @@ event:
   freeze_hours: 3                          # code-freeze window before deadline -> 2026-06-14T09:00:00Z
   phase: build                          # setup | ideation | build | freeze | submitted
   submission_url: "https://prompthack.aaltoes.com/sales-2026"
+  submission_method: "EMAIL to anssi.ronnemaa@hmdglobal.com + janne.lehtosalo@hmdglobal.com (auto-CC meri.heikkinen@aaltoes.com, olivia.ronnemaa@aaltoes.com). Include repo + deployed URL + demo video. Pick challenge on team page first."
   demo_minutes: 3
 tracks:
   - name: "HMD"
