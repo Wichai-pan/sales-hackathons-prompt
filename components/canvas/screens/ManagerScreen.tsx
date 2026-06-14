@@ -18,7 +18,7 @@ export interface ManagerScreenData {
     trend?: number[];
   }[];
   stalled: { id: string; name: string; accountName: string; daysStalled: number; amount: number }[];
-  pastClose: { id: string; name: string; accountName: string; daysOverdue: number; amount: number }[];
+  pastClose: { id: string; name: string; accountName: string; ownerName?: string; daysOverdue: number; amount: number }[];
   pendingApprovals: { id: string; title: string; accountName: string; discountPercent: number; total: number; currency: string; aiRecommended: "APPROVE" | "REJECT" | "NEGOTIATE" }[];
   aiPipelineHealth: string;
 }
@@ -137,7 +137,7 @@ export function ManagerScreen({ data }: { data: ManagerScreenData }) {
               <Link key={d.id} href={`/deals/${d.id}`} className="flex items-center justify-between px-5 py-3 hover:bg-secondary/30">
                 <div>
                   <div className="font-medium">{d.name}</div>
-                  <div className="text-xs text-muted-foreground">{d.accountName} · {d.daysOverdue}d overdue</div>
+                  <div className="text-xs text-muted-foreground">{d.accountName}{d.ownerName ? ` · ${d.ownerName}` : ""} · {d.daysOverdue}d overdue</div>
                 </div>
                 <div className="font-display tnum">{fmt(d.amount)}</div>
               </Link>

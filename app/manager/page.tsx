@@ -127,6 +127,7 @@ export default async function ManagerPage({
       id: d.id,
       name: d.name,
       accountName: d.accountName,
+      ownerName: d.ownerName,
       daysOverdue: d.expectedCloseDate
         ? Math.max(0, Math.round((now - d.expectedCloseDate.getTime()) / 86_400_000))
         : 0,
