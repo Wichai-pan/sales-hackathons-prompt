@@ -189,10 +189,10 @@
     <div class="kicker">HERO · 业务收口</div>
     <h2 style="margin-top:18px">3 年加权预测 · <span class="grad">说 HMD 自己的语言</span></h2>
     <div class="kpis">
-      <div class="kpi"><div class="v">€31.1M</div><div class="l">Net sales 净销售</div></div>
-      <div class="kpi hl"><div class="v grad">€13.9M</div><div class="l">Gross margin 毛利</div></div>
-      <div class="kpi"><div class="v">45%</div><div class="l">GM %</div></div>
-      <div class="kpi"><div class="v">€18.0M</div><div class="l">Weighted 加权</div></div>
+      <div class="kpi"><div class="v">€18.6M</div><div class="l">Net sales 净销售</div></div>
+      <div class="kpi hl"><div class="v grad">€7.5M</div><div class="l">Gross margin 毛利</div></div>
+      <div class="kpi"><div class="v">40%</div><div class="l">GM %</div></div>
+      <div class="kpi"><div class="v">€10.9M</div><div class="l">Weighted 加权</div></div>
     </div>
     <div class="card" style="padding:30px 36px 22px">
       <div class="legend" style="margin-bottom:18px"><span><i class="sw" style="background:#5d6dde"></i>设备收入</span><span><i class="sw" style="background:#2fae8a"></i>服务收入</span><span style="color:var(--faint)">· 12 个季度 · 按阶段概率加权</span></div>
@@ -246,7 +246,7 @@
   addEventListener('resize',fit);
   stage.addEventListener('click',e=>{const r=stage.getBoundingClientRect();(e.clientX-r.left)/r.width<0.25?show(i-1):show(i+1)});
   // build forecast bars (mock, seed-scale)
-  const dev=[18,21,24,22,14,13,12,11,9,8,8,7],svc=[3,4,6,8,10,11,13,14,16,17,18,20],Q=['26Q3','Q4','27Q1','Q2','Q3','Q4','28Q1','Q2','Q3','Q4','29Q1','Q2'];
+  const dev=[1753,1753,1753,1753,964,964,964,964,701,701,701,701],svc=[63,127,190,254,317,381,444,507,571,634,698,761],Q=['26Q2','Q3','Q4','27Q1','Q2','Q3','Q4','28Q1','Q2','Q3','Q4','29Q1'];
   const mx=Math.max(...dev.map((d,k)=>d+svc[k]));
   document.getElementById('bars').innerHTML=dev.map((d,k)=>{
     const h=200/mx;return '<div class="bar"><div class="seg svc" style="height:'+(svc[k]*h)+'px"></div><div class="seg dev" style="height:'+(d*h)+'px"></div><div class="barlbl">'+Q[k]+'</div></div>'}).join('');
