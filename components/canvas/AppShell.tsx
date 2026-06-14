@@ -115,43 +115,51 @@ export function AppShell({ role, user, nav, unreadCount = 0, children }: AppShel
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/80 px-6 backdrop-blur-xl">
-          <form action="/search" className="relative flex max-w-xl flex-1 items-center">
+        <header className="sticky top-0 z-30 flex h-20 items-center gap-3 border-b border-border bg-background/80 px-6 backdrop-blur-xl">
+          {/* Left spacer — equal-weight to the right cluster so the search sits dead-centre. */}
+          <div className="flex-1" />
+
+          {/* Centered search */}
+          <form action="/search" className="relative flex w-full max-w-md items-center">
             <Search className="absolute left-3 h-4 w-4 text-muted-foreground" />
             <input
               name="q"
               placeholder="Search accounts, deals, cases, contacts…  ⌘K"
-              className="h-9 w-full rounded-lg border border-border bg-secondary/40 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+              className="h-10 w-full rounded-lg border border-border bg-secondary/40 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
             />
           </form>
-          <Link
-            href="/notifications"
-            className="relative grid h-9 w-9 place-items-center rounded-lg border border-border hover:bg-secondary"
-          >
-            <Bell className="h-4 w-4" />
-            {unreadCount > 0 && <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-destructive" />}
-          </Link>
-          <Link
-            href="/role-switch"
-            className="grid h-9 w-9 place-items-center rounded-lg border border-border hover:bg-secondary"
-            aria-label="Switch role"
-          >
-            <Settings className="h-4 w-4" />
-          </Link>
-          <Link href="/role-switch" className="flex items-center gap-2 rounded-lg border border-border px-2 py-1.5 hover:bg-secondary">
-            <div
-              className="grid h-7 w-7 place-items-center rounded-md text-[11px] font-semibold text-white"
-              style={{
-                background: `linear-gradient(135deg, oklch(0.65 0.18 ${user.avatarHue ?? 280}), oklch(0.55 0.22 ${((user.avatarHue ?? 280) + 40) % 360}))`,
-              }}
+
+          {/* Right cluster — pinned to the far right */}
+          <div className="flex flex-1 items-center justify-end gap-2">
+            <Link
+              href="/notifications"
+              className="relative grid h-10 w-10 place-items-center rounded-lg border border-border hover:bg-secondary"
             >
-              {initialsOf(user.name)}
-            </div>
-            <div className="hidden sm:block text-left">
-              <div className="text-xs font-medium leading-tight">{user.name}</div>
-              <div className="text-[10px] text-muted-foreground">{role.replace("_", " ")}</div>
-            </div>
-          </Link>
+              <Bell className="h-4 w-4" />
+              {unreadCount > 0 && <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-destructive" />}
+            </Link>
+            <Link
+              href="/role-switch"
+              className="grid h-10 w-10 place-items-center rounded-lg border border-border hover:bg-secondary"
+              aria-label="Switch role"
+            >
+              <Settings className="h-4 w-4" />
+            </Link>
+            <Link href="/role-switch" className="flex items-center gap-2 rounded-lg border border-border px-2 py-1.5 hover:bg-secondary">
+              <div
+                className="grid h-7 w-7 place-items-center rounded-md text-[11px] font-semibold text-white"
+                style={{
+                  background: `linear-gradient(135deg, oklch(0.65 0.18 ${user.avatarHue ?? 280}), oklch(0.55 0.22 ${((user.avatarHue ?? 280) + 40) % 360}))`,
+                }}
+              >
+                {initialsOf(user.name)}
+              </div>
+              <div className="hidden sm:block text-left">
+                <div className="text-xs font-medium leading-tight">{user.name}</div>
+                <div className="text-[10px] text-muted-foreground">{role.replace("_", " ")}</div>
+              </div>
+            </Link>
+          </div>
         </header>
         <main className="min-w-0 flex-1">{children}</main>
       </div>
