@@ -1,17 +1,15 @@
-// Deal detail (Owner / SA-O2). Header + change-stage control + the time-phased forecast
-// (per-quarter device vs service split + weighted) + a link to build an offer.
+// Deal detail (Owner / SA-O2) — rendered through the canvas DealDetailScreen.
+// The time-phased forecast (hero #3: device vs service split + weighted) plus the move-stage
+// and add-note forms are wired to the real server actions via adapter actions.
 
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { STAGE_LABEL, DIRECT_STAGES, RESELLER_STAGES, aggregateByQuarter } from "@/lib/forecast";
-import { formatEUR } from "@/lib/utils";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { updateDealStage, addDealNote } from "../actions";
-import type { DealStage } from "@prisma/client";
+import { DealDetailScreen, type DealDetailScreenData } from "@/components/canvas/screens/DealDetailScreen";
+import type { Deal as CanvasDeal } from "@/lib/canvas/types";
+
+export const dynamic = "force-dynamic";
 
 export default async function DealPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -28,114 +26,65 @@ export default async function DealPage({ params }: { params: Promise<{ id: strin
   });
 
   const quarters = aggregateByQuarter(deal.forecastPeriods);
-  const total = quarters.reduce((s, q) => s + q.totalRevenue, 0);
-  const weighted = quarters.reduce((s, q) => s + q.weightedRevenue, 0);
-  const stageOptions = (deal.channel === "RESELLER" ? RESELLER_STAGES : DIRECT_STAGES);
+  const stageOptions = (deal.channel === "RESELLER" ? RESELLER_STAGES : DIRECT_STAGES).map((s) => ({
+    value: s,
+    label: STAGE_LABEL[s],
+  }));
 
-  return (
-    <main className="mx-auto max-w-5xl px-4 py-8">
-      <Link href={`/accounts/${deal.accountId}`} className="text-sm text-muted-foreground hover:underline">
-        ← {deal.account.name}
-      </Link>
-      <div className="mt-1 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">{deal.name}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {deal.channel === "RESELLER" ? <Badge variant="outline">Reseller</Badge> : <Badge variant="secondary">Direct</Badge>}{" "}
-            · {STAGE_LABEL[deal.stage]} · {deal.probability}% · owner {deal.ownerRep.name} · service {{ ONE_OFF: "one-off", FIXED_TERM: "fixed-term", MONTHLY_RECURRING: "monthly recurring" }[deal.serviceModel] ?? deal.serviceModel}
-            {deal.expectedCloseDate ? ` · close ${deal.expectedCloseDate.toISOString().slice(0, 10)}` : ""}
-          </p>
-        </div>
-        <Link href={`/offers/new?accountId=${deal.accountId}&dealId=${deal.id}`}>
-          <Button size="sm">Build offer</Button>
-        </Link>
-      </div>
+  // ---- Adapter actions: wire the canvas forms to the real server actions ----
+  async function changeStageAction(formData: FormData) {
+    "use server";
+    const stage = String(formData.get("stage") ?? "");
+    if (!stage) return;
+    const fd = new FormData();
+    fd.set("dealId", id);
+    fd.set("stage", stage);
+    await updateDealStage(fd);
+  }
+  async function addNoteAction(formData: FormData) {
+    "use server";
+    const body = String(formData.get("body") ?? "").trim();
+    if (!body) return;
+    const fd = new FormData();
+    fd.set("dealId", id);
+    fd.set("body", body);
+    await addDealNote(fd);
+  }
 
-      {/* 3-year totals */}
-      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Stat label="3-yr total" value={formatEUR(total)} />
-        <Stat label="Weighted" value={formatEUR(weighted)} />
-        <Stat label="Quarters" value={String(quarters.length)} />
-        <Stat label="Stage prob." value={`${deal.probability}%`} />
-      </div>
+  const data: DealDetailScreenData = {
+    deal: {
+      id: deal.id,
+      accountId: deal.accountId,
+      accountName: deal.account.name,
+      name: deal.name,
+      channel: deal.channel as CanvasDeal["channel"],
+      stage: deal.stage as unknown as CanvasDeal["stage"],
+      probability: deal.probability,
+      expectedCloseDate: deal.expectedCloseDate?.toISOString(),
+      lastActivityAt: deal.lastActivityAt.toISOString(),
+      status: deal.status as unknown as CanvasDeal["status"],
+      serviceModel: deal.serviceModel as unknown as CanvasDeal["serviceModel"],
+      ownerName: deal.ownerRep.name,
+    },
+    forecast: quarters.map((q) => ({
+      periodLabel: q.label,
+      deviceUnits: q.deviceUnits,
+      deviceRevenue: q.deviceRevenue,
+      serviceRevenue: q.serviceRevenue,
+      totalRevenue: q.totalRevenue,
+      weightedRevenue: q.weightedRevenue,
+    })),
+    notes: notes.map((n) => ({
+      id: n.id,
+      body: n.body,
+      authorName: n.author.name,
+      createdAt: n.createdAt.toISOString(),
+    })),
+    stageOptions,
+    stageLabel: STAGE_LABEL[deal.stage],
+    changeStageAction,
+    addNoteAction,
+  };
 
-      {/* Change stage */}
-      <Card className="mt-6">
-        <CardHeader><CardTitle className="text-base">Move stage</CardTitle></CardHeader>
-        <CardContent>
-          <form action={updateDealStage} className="flex flex-wrap items-center gap-2">
-            <input type="hidden" name="dealId" value={deal.id} />
-            <select name="stage" defaultValue={deal.stage} className="rounded-md border border-input bg-background px-3 py-2 text-sm">
-              {stageOptions.map((s: DealStage) => (
-                <option key={s} value={s}>{STAGE_LABEL[s]}</option>
-              ))}
-            </select>
-            <Button type="submit" size="sm" variant="secondary">Update</Button>
-            <span className="text-xs text-muted-foreground">Re-weights the forecast at the new stage probability.</span>
-          </form>
-        </CardContent>
-      </Card>
-
-      {/* Time-phased forecast */}
-      <Card className="mt-6">
-        <CardHeader><CardTitle>3-year time-phased forecast</CardTitle></CardHeader>
-        <CardContent>
-          <Table>
-            <THead>
-              <TR>
-                <TH>Quarter</TH>
-                <TH className="text-right">Device units</TH>
-                <TH className="text-right">Device €</TH>
-                <TH className="text-right">Service €</TH>
-                <TH className="text-right">Total €</TH>
-                <TH className="text-right">Weighted €</TH>
-              </TR>
-            </THead>
-            <TBody>
-              {quarters.map((q) => (
-                <TR key={q.label}>
-                  <TD className="font-medium">{q.label}</TD>
-                  <TD className="text-right">{q.deviceUnits}</TD>
-                  <TD className="text-right">{formatEUR(q.deviceRevenue)}</TD>
-                  <TD className="text-right">{formatEUR(q.serviceRevenue)}</TD>
-                  <TD className="text-right">{formatEUR(q.totalRevenue)}</TD>
-                  <TD className="text-right">{formatEUR(q.weightedRevenue)}</TD>
-                </TR>
-              ))}
-            </TBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      {/* Deal notes */}
-      <Card className="mt-6">
-        <CardHeader><CardTitle>Notes</CardTitle></CardHeader>
-        <CardContent>
-          <form action={addDealNote} className="flex gap-2">
-            <input type="hidden" name="dealId" value={deal.id} />
-            <input name="body" placeholder="Add a note…" required className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm" />
-            <Button type="submit" size="sm">Add</Button>
-          </form>
-          <ul className="mt-4 space-y-3">
-            {notes.length === 0 && <li className="text-sm text-muted-foreground">No notes yet.</li>}
-            {notes.map((n) => (
-              <li key={n.id} className="rounded-md border border-border p-3 text-sm">
-                <div>{n.body}</div>
-                <div className="mt-1 text-xs text-muted-foreground">{n.author.name} · {n.createdAt.toISOString().slice(0, 16).replace("T", " ")}</div>
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      </Card>
-    </main>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-md border border-border p-3">
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="mt-1 text-lg font-semibold">{value}</div>
-    </div>
-  );
+  return <DealDetailScreen data={data} />;
 }

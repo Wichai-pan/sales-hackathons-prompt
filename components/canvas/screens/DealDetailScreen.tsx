@@ -4,7 +4,7 @@ import { GlassCard, SectionHeader, AIChip } from "@/components/canvas/primitives
 import { Badge } from "@/components/canvas/ui/badge";
 import { Button } from "@/components/canvas/ui/button";
 import { Select, Textarea } from "@/components/canvas/ui/input";
-import type { Deal, DealForecastPeriod, DealStage, ServerAction } from "@/lib/canvas/types";
+import type { Deal, DealForecastPeriod, ServerAction } from "@/lib/canvas/types";
 import { fmt, fmtDate } from "@/lib/canvas/format";
 import { noopAction } from "@/lib/canvas/types";
 
@@ -13,21 +13,28 @@ export interface DealDetailScreenData {
   /** 3-year quarterly forecast (12 periods). */
   forecast: DealForecastPeriod[];
   notes: { id: string; body: string; authorName: string; createdAt: string }[];
+  /** Stage dropdown options (value = backend enum, label = human). Channel-specific. */
+  stageOptions?: { value: string; label: string }[];
+  /** Human label for the current stage (backend enums aren't display-ready). */
+  stageLabel?: string;
   /** Action receives `stage` field. */
   changeStageAction?: ServerAction;
   /** Action receives `body` field. */
   addNoteAction?: ServerAction;
 }
 
-const stages: DealStage[] = ["LEAD", "DISCOVERY", "QUALIFIED", "PROPOSAL", "NEGOTIATION", "CLOSED_WON", "CLOSED_LOST"];
+const FALLBACK_STAGES: { value: string; label: string }[] = [
+  "LEAD", "DISCOVERY", "QUALIFIED", "PROPOSAL", "NEGOTIATION", "CLOSED_WON", "CLOSED_LOST",
+].map((s) => ({ value: s, label: s }));
 
 export function DealDetailScreen({ data }: { data: DealDetailScreenData }) {
   const d = data.deal;
   const max = Math.max(...data.forecast.map((p) => p.totalRevenue)) || 1;
+  const stageOptions = data.stageOptions ?? FALLBACK_STAGES;
   return (
     <div className="p-6 lg:p-8 space-y-6">
-      <Link href="/deals" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="h-3 w-3" /> All deals
+      <Link href={`/accounts/${d.accountId}`} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+        <ArrowLeft className="h-3 w-3" /> {d.accountName ?? "Back to account"}
       </Link>
 
       <SectionHeader
@@ -36,7 +43,7 @@ export function DealDetailScreen({ data }: { data: DealDetailScreenData }) {
         action={
           <form action={data.changeStageAction ?? noopAction} className="flex items-center gap-2">
             <Select name="stage" defaultValue={d.stage}>
-              {stages.map((s) => <option key={s} value={s}>{s}</option>)}
+              {stageOptions.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
             </Select>
             <Button type="submit" size="sm">Update stage</Button>
           </form>
@@ -81,7 +88,7 @@ export function DealDetailScreen({ data }: { data: DealDetailScreenData }) {
           <div className="border-b border-border px-5 py-3 font-medium text-sm">Deal facts</div>
           <dl className="divide-y divide-border text-sm">
             {[
-              ["Stage", d.stage],
+              ["Stage", data.stageLabel ?? d.stage],
               ["Probability", `${d.probability}%`],
               ["Status", d.status],
               ["Channel", d.channel],
