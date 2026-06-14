@@ -73,8 +73,9 @@ export function OfferBuilder({
         <td className="py-2 text-right text-muted-foreground">{formatEUR(it.price)}</td>
         <td className="py-2 text-right">
           <input
-            type="number" min="0" name={`qty_${key}`} value={qty[key] ?? 0}
-            onChange={(e) => setQ(key, Number(e.target.value))} className={inputCls}
+            type="number" min="0" name={`qty_${key}`} placeholder="0"
+            value={(qty[key] ?? 0) === 0 ? "" : qty[key]}
+            onChange={(e) => setQ(key, Number(e.target.value) || 0)} className={inputCls}
           />
         </td>
         <td className="py-2 text-right">{formatEUR(it.price * (qty[key] ?? 0))}</td>
@@ -124,8 +125,9 @@ export function OfferBuilder({
             <div>
               <label className="text-sm font-medium">Discount %</label>
               <input
-                type="number" min="0" max="100" name="discountPercent" value={discount}
-                onChange={(e) => setDiscount(Math.max(0, Math.min(100, Number(e.target.value))))}
+                type="number" min="0" max="100" name="discountPercent" placeholder="0"
+                value={discount === 0 ? "" : discount}
+                onChange={(e) => setDiscount(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               />
             </div>
