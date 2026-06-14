@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Clock, AlertTriangle } from "lucide-react";
 import { GlassCard, SectionHeader, KpiTile } from "@/components/canvas/primitives";
 import { Badge } from "@/components/canvas/ui/badge";
-import type { Case, CasePriority } from "@/lib/canvas/types";
+import type { Case, CasePriority, CaseStatus } from "@/lib/canvas/types";
 
 export interface TamDashboardData {
   ownerName: string;
@@ -18,7 +18,17 @@ const priorityTone: Record<CasePriority, "destructive" | "warning" | "info" | "d
   P1: "destructive", P2: "warning", P3: "info", P4: "default",
 };
 
+const statusTone: Record<CaseStatus, "destructive" | "warning" | "info" | "default" | "success" | "outline"> = {
+  OPEN: "info", IN_PROGRESS: "default", WAITING: "warning", RESOLVED: "success", CLOSED: "outline",
+};
+// WAITING maps to ESCALATED on the backend — show that label so TAMs read it correctly.
+const statusLabel: Record<CaseStatus, string> = {
+  OPEN: "Open", IN_PROGRESS: "In progress", WAITING: "Escalated", RESOLVED: "Resolved", CLOSED: "Closed",
+};
+
 export function TamDashboardScreen({ data }: { data: TamDashboardData }) {
+  const overdueIds = new Set(data.slaOverdue.map((c) => c.id));
+  const dueSoonIds = new Set(data.slaDueSoon.map((c) => c.id));
   return (
     <div className="p-6 lg:p-8 space-y-6">
       <SectionHeader title={`TAM workspace · ${data.ownerName}`} subtitle="Open cases, SLA, escalations" />
@@ -39,9 +49,19 @@ export function TamDashboardScreen({ data }: { data: TamDashboardData }) {
                 </div>
                 <div className="mt-2 space-y-1.5">
                   {g.cases.map((c) => (
-                    <Link key={c.id} href={`/cases/${c.id}`} className="block rounded-md px-2 py-1 text-sm hover:bg-secondary/40">
-                      <span className="font-medium">{c.title}</span>
-                      <span className="ml-2 text-xs text-muted-foreground">{c.accountName}</span>
+                    <Link key={c.id} href={`/cases/${c.id}`} className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-secondary/40">
+                      <span className="min-w-0 flex-1 truncate">
+                        <span className="font-medium">{c.title}</span>
+                        <span className="ml-2 text-xs text-muted-foreground">{c.accountName}{c.serviceName ? ` · ${c.serviceName}` : ""}</span>
+                      </span>
+                      <span className="flex shrink-0 items-center gap-1.5">
+                        {overdueIds.has(c.id) ? (
+                          <Badge variant="destructive">Overdue</Badge>
+                        ) : dueSoonIds.has(c.id) ? (
+                          <Badge variant="warning">Due soon</Badge>
+                        ) : null}
+                        <Badge variant={statusTone[c.status]}>{statusLabel[c.status]}</Badge>
+                      </span>
                     </Link>
                   ))}
                 </div>
