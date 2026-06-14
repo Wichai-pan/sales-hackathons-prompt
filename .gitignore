@@ -14,3 +14,6 @@ dist/
 /coverage
 *.tsbuildinfo
 next-env.d.ts
+
+# Office temp/lock files
+~$*
