@@ -49,6 +49,45 @@ async function snapshot(userId: string, role: Role): Promise<string> {
   return lines.join("\n");
 }
 
+/** Describe the record / page the user is currently looking at, so Aino can be page-aware. */
+async function describeCurrentPage(pathname?: string): Promise<string | null> {
+  if (!pathname) return null;
+  const rec = pathname.match(/^\/(accounts|deals|offers|cases)\/([^/?#]+)/);
+  if (rec) {
+    const [, kind, id] = rec;
+    try {
+      if (kind === "accounts") {
+        const a = await prisma.account.findUnique({ where: { id }, include: { _count: { select: { deals: true, cases: true, offers: true } } } });
+        if (a) return `the account "${a.name}" (${a._count.deals} deals, ${a._count.cases} cases, ${a._count.offers} offers)`;
+      } else if (kind === "deals") {
+        const d = await prisma.deal.findUnique({ where: { id }, include: { account: true } });
+        if (d) return `the deal "${d.name}" at ${d.account.name} (stage ${d.stage}, ${d.probability}% probability)`;
+      } else if (kind === "offers") {
+        const o = await prisma.offer.findUnique({ where: { id }, include: { account: true, deal: true } });
+        if (o) return `an offer for ${o.account.name}${o.deal ? ` (${o.deal.name})` : ""} — status ${o.status}, ${o.discountPercent}% discount`;
+      } else if (kind === "cases") {
+        const c = await prisma.case.findUnique({ where: { id }, include: { account: true } });
+        if (c) return `the case "${c.title}" at ${c.account.name} (${c.priority}, ${c.status})`;
+      }
+    } catch {
+      /* ignore lookup errors — fall back to a non-page-aware answer */
+    }
+    return null;
+  }
+  const PAGES: Record<string, string> = {
+    "/rep": "their Rep dashboard",
+    "/manager": "the Manager pipeline dashboard",
+    "/finance": "the Finance dashboard (3-year forecast)",
+    "/tam": "their TAM case queue",
+    "/catalog": "the product & service catalog",
+    "/approvals": "the approvals queue",
+    "/reports": "the reports page",
+    "/views": "the smart views",
+    "/notifications": "their notifications",
+  };
+  return PAGES[pathname] ?? null;
+}
+
 const HELP = `How the CRM works (for guidance answers):
 - Apply a discount: open a deal → "Build offer" → add catalog items → set discount % + a justification → Submit. It routes to the Sales Manager, then Finance.
 - Open a service case: open the account → "New case".
@@ -59,7 +98,7 @@ const HELP = `How the CRM works (for guidance answers):
 export interface AinoAction { label: string; prompt: string }
 
 /** A personalised greeting + proactive, data-driven WORK suggestions shown when the panel opens. */
-export async function assistantGreeting(opts: { userId: string; role: Role; name: string }): Promise<{ greeting: string; actions: AinoAction[] }> {
+export async function assistantGreeting(opts: { userId: string; role: Role; name: string; pathname?: string }): Promise<{ greeting: string; actions: AinoAction[] }> {
   const first = opts.name.split(" ")[0];
   const actions: AinoAction[] = [];
   let situational = "";
@@ -98,14 +137,28 @@ export async function assistantGreeting(opts: { userId: string; role: Role; name
     actions.push({ label: "My day", prompt: "Which cases should I work first today, most urgent first?" });
   }
 
+  // Page-aware: if they're on a specific record page, lead with THAT record.
+  const page = await describeCurrentPage(opts.pathname);
+  const onRecord = !!opts.pathname && /^\/(accounts|deals|offers|cases)\//.test(opts.pathname);
+  if (onRecord && page) {
+    const recAction: AinoAction = { label: "Advise on this", prompt: `I'm looking at ${page}. What's the single most important next action here, and why?` };
+    return {
+      greeting: `Hi ${first} 👋 — you're looking at ${page}. Want my take on the next move? (Also: ${situational})`,
+      actions: [recAction, ...actions].slice(0, 4),
+    };
+  }
+
   return {
     greeting: `Hi ${first} 👋 — ${situational} Where do you want to start?`,
     actions: actions.slice(0, 4),
   };
 }
 
-export async function askAino(question: string, opts: { userId: string; role: Role; name: string }): Promise<{ answer: string; source: "ai" | "fallback" }> {
-  const snap = await snapshot(opts.userId, opts.role);
+export async function askAino(question: string, opts: { userId: string; role: Role; name: string; pathname?: string }): Promise<{ answer: string; source: "ai" | "fallback" }> {
+  const [snap, page] = await Promise.all([snapshot(opts.userId, opts.role), describeCurrentPage(opts.pathname)]);
+  const pageLine = page
+    ? `\n\nRIGHT NOW the user is looking at ${page}. If they say "this", "here", or "current", they mean that record/page — tailor the answer to it.`
+    : "";
 
   const ai = await aiText({
     system:
@@ -114,7 +167,7 @@ export async function askAino(question: string, opts: { userId: string; role: Ro
       `Answer concisely and CONCRETELY using the live data snapshot below, naming specific deals/cases/accounts and numbers. ` +
       `If they ask what to do / to plan their day / where to start, give a SHORT PRIORITISED list (most urgent first, ~3 items) of concrete next actions tied to specific records. ` +
       `Only explain how-to steps if they explicitly ask how. 1-4 sentences (or a tight 3-item list), plain prose, no markdown.\n\n` +
-      `LIVE DATA:\n${snap}\n\n${HELP}`,
+      `LIVE DATA:\n${snap}${pageLine}\n\n${HELP}`,
     user: question,
     maxTokens: 280,
   });

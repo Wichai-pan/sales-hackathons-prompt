@@ -1,9 +1,11 @@
 "use client";
 
 // Floating "Aino" AI assistant (bottom-right). Conversational query over live data + usage help.
-// On-thesis: the "AI analyst on the team" you can just ask. Calls /api/ai/assistant (Featherless + fallback).
+// PAGE-AWARE: passes the current route to the API so Aino tailors its greeting/answers to what the
+// user is looking at, and — while open — proactively nudges when they navigate to a new record.
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { usePathname } from "next/navigation";
 import { Sparkles, X, Send } from "lucide-react";
 
 type Msg = { role: "user" | "aino"; text: string };
@@ -17,6 +19,8 @@ export function AiAssistant() {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname() ?? "/";
+  const lastPath = useRef<string>("");
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs, open]);
 
@@ -27,18 +31,35 @@ export function AiAssistant() {
     return () => window.removeEventListener("aino:open", handler);
   }, []);
 
-  // On first open, fetch a personalised greeting + proactive, data-driven work suggestions.
+  // Fetch a PAGE-AWARE greeting + proactive suggestions for `path`. append=true adds it as a new
+  // message (used when the user navigates while Aino is open) instead of resetting the thread.
+  const loadGreeting = useCallback(async (path: string, append: boolean) => {
+    try {
+      const r = await fetch(`/api/ai/assistant?path=${encodeURIComponent(path)}`);
+      const d = await r.json();
+      const greeting = d.greeting ?? "Hi — how can I help?";
+      setActions(Array.isArray(d.actions) ? d.actions : []);
+      setMsgs((m) => (append ? [...m, { role: "aino", text: greeting }] : [{ role: "aino", text: greeting }]));
+    } catch {
+      if (!append) setMsgs([{ role: "aino", text: "Hi — ask me about your accounts, deals, or pipeline." }]);
+    }
+  }, []);
+
+  // First open -> greet for the page they're on.
   useEffect(() => {
     if (!open || greeted) return;
     setGreeted(true);
-    fetch("/api/ai/assistant")
-      .then((r) => r.json())
-      .then((d) => {
-        setMsgs([{ role: "aino", text: d.greeting ?? "Hi — how can I help?" }]);
-        setActions(Array.isArray(d.actions) ? d.actions : []);
-      })
-      .catch(() => setMsgs([{ role: "aino", text: "Hi — ask me about your accounts, deals, or pipeline." }]));
-  }, [open, greeted]);
+    lastPath.current = pathname;
+    void loadGreeting(pathname, false);
+  }, [open, greeted, pathname, loadGreeting]);
+
+  // Navigate while open -> proactively nudge about the new page (keeps the conversation).
+  useEffect(() => {
+    if (!open || !greeted) return;
+    if (pathname === lastPath.current) return;
+    lastPath.current = pathname;
+    void loadGreeting(pathname, true);
+  }, [pathname, open, greeted, loadGreeting]);
 
   async function send(question: string) {
     const q = question.trim();
@@ -50,7 +71,7 @@ export function AiAssistant() {
       const res = await fetch("/api/ai/assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: q }),
+        body: JSON.stringify({ question: q, pathname }),
       });
       const data = await res.json();
       setMsgs((m) => [...m, { role: "aino", text: data.answer ?? "…" }]);
@@ -98,7 +119,7 @@ export function AiAssistant() {
         <div ref={endRef} />
       </div>
 
-      {msgs.length <= 1 && (
+      {actions.length > 0 && !busy && (
         <div className="flex flex-wrap gap-1.5 px-4 pb-2">
           {actions.map((a) => (
             <button key={a.label} onClick={() => send(a.prompt)} className="rounded-full border border-primary/30 bg-primary/5 px-2.5 py-1 text-xs text-foreground hover:bg-primary/10">{a.label}</button>
