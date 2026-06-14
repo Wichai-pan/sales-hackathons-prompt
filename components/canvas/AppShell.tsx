@@ -70,10 +70,10 @@ export function AppShell({ role, user, nav, unreadCount = 0, children }: AppShel
         )}
       >
         <Link
-          href={items[0]?.href ?? "/"}
+          href="/role-switch"
           className="flex h-14 items-center gap-2 px-4 transition-opacity hover:opacity-80"
-          aria-label="回到主页"
-          title="回到主页"
+          aria-label="Back to sign-in"
+          title="Back to sign-in"
         >
           <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg ai-gradient shadow-elegant">
             <ShieldCheck className="h-4 w-4 text-white" />

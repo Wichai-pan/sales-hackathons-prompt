@@ -1,7 +1,7 @@
 "use client";
 
 // AI-assisted intake panel (Owner / SA-O4) — the HERO demo opener.
-// Paste an email/notes blob (OR click "一键演示" to drop in a sample) -> AI returns a DRAFT
+// Paste an email/notes blob (OR click "Try a sample" to drop one in) -> AI returns a DRAFT
 // (preview only) -> review + uncheck what you don't want -> "Apply selected" writes real
 // records via the applyIntake server action.
 
@@ -96,31 +96,31 @@ export function IntakePanel() {
       </CardHeader>
       <CardContent>
         <p className="mb-2 text-xs text-muted-foreground">
-          Paste an email or meeting notes — or click <span className="font-medium text-foreground">一键演示</span>. AI drafts the CRM records; nothing is saved until you apply.
+          Paste an email or meeting notes — or click <span className="font-medium text-foreground">Try a sample</span>. AI drafts the CRM records; nothing is saved until you apply.
         </p>
         <textarea
           value={pasted}
           onChange={(e) => setPasted(e.target.value)}
           rows={5}
-          placeholder="Paste an email thread or notes…  （或点右下「一键演示」自动填入示例邮件）"
+          placeholder={`Paste an email thread or notes…  (or click "Try a sample" to auto-fill a demo email)`}
           className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
         />
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <Button type="button" size="sm" onClick={() => generate()} disabled={loading || pasted.trim().length < 10}>
             {loading ? (
-              <span className="inline-flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5 animate-pulse" /> AI 解析中…</span>
+              <span className="inline-flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5 animate-pulse" /> Reading…</span>
             ) : (
               <span className="inline-flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" /> Generate draft</span>
             )}
           </Button>
           <Button type="button" size="sm" variant="secondary" onClick={runSample} disabled={loading}>
-            <span className="inline-flex items-center gap-1.5"><Wand2 className="h-3.5 w-3.5" /> 一键演示（示例邮件 {((sampleIdx % SAMPLES.length) + 1)}/{SAMPLES.length}）</span>
+            <span className="inline-flex items-center gap-1.5"><Wand2 className="h-3.5 w-3.5" /> Try a sample (email {((sampleIdx % SAMPLES.length) + 1)}/{SAMPLES.length})</span>
           </Button>
         </div>
 
         {loading && (
           <div className="mt-3 space-y-2 rounded-md border border-primary/20 bg-accent/20 p-3">
-            <div className="text-xs font-medium ai-gradient-text">AI 正在读邮件、抽取账户 / 联系人 / 商机 / 工单…</div>
+            <div className="text-xs font-medium ai-gradient-text">AI is reading the email — extracting account / contact / deal / case…</div>
             <div className="h-2 w-full animate-pulse rounded bg-muted" />
             <div className="h-2 w-4/5 animate-pulse rounded bg-muted" />
             <div className="h-2 w-3/5 animate-pulse rounded bg-muted" />
