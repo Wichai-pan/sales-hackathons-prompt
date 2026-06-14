@@ -238,6 +238,7 @@
   const slides=[...document.querySelectorAll('.slide')];
   const stage=document.getElementById('stage');
   let i=Math.min(slides.length-1,Math.max(0,+localStorage.getItem('hmd-deck')||0));
+  const _h=parseInt(location.hash.slice(1));if(_h)i=Math.min(slides.length-1,Math.max(0,_h-1)); // deep-link #N → slide N (also used by the PPTX exporter)
   function show(n){i=Math.max(0,Math.min(slides.length-1,n));slides.forEach((s,k)=>s.classList.toggle('active',k===i));
     document.getElementById('counter').textContent=(i+1)+' / '+slides.length;localStorage.setItem('hmd-deck',i)}
   function fit(){const s=Math.min(innerWidth/1920,innerHeight/1080);stage.style.transform='translate(-50%,-50%) scale('+s+')'}
