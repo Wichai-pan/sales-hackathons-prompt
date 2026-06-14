@@ -6,6 +6,7 @@ import { Badge } from "@/components/canvas/ui/badge";
 import type { Account, Deal, Offer, Case, ActivityEvent, ServerAction } from "@/lib/canvas/types";
 import { fmt, initials } from "@/lib/canvas/format";
 import { noopAction } from "@/lib/canvas/types";
+import { DailyBriefButton } from "@/components/daily-brief-button";
 
 export interface NextBestAction {
   id: string;
@@ -43,11 +44,7 @@ export function RepDashboardScreen({ data }: { data: RepDashboardData }) {
       <SectionHeader
         title={`Good morning, ${data.greetingName} ✨`}
         subtitle={data.greetingSubtitle}
-        action={
-          <button type="button" className="inline-flex items-center gap-2 rounded-lg ai-gradient px-4 py-2 text-sm font-medium text-white shadow-elegant">
-            <Sparkles className="h-4 w-4" /> Daily brief
-          </button>
-        }
+        action={<DailyBriefButton />}
       />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

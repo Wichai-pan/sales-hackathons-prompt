@@ -20,6 +20,13 @@ export function AiAssistant() {
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs, open]);
 
+  // Let other parts of the app open Aino (e.g. the rep dashboard "Daily brief" CTA).
+  useEffect(() => {
+    const handler = () => setOpen(true);
+    window.addEventListener("aino:open", handler);
+    return () => window.removeEventListener("aino:open", handler);
+  }, []);
+
   // On first open, fetch a personalised greeting + proactive, data-driven work suggestions.
   useEffect(() => {
     if (!open || greeted) return;
