@@ -4,6 +4,7 @@
 // apply a discount (justification required when > 0), see the live total, submit for approval.
 
 import { useState } from "react";
+import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -29,8 +30,31 @@ export function OfferBuilder({
 }) {
   const [qty, setQty] = useState<Record<string, number>>({});
   const [discount, setDiscount] = useState(0);
+  const [justification, setJustification] = useState("");
+  const [genBusy, setGenBusy] = useState(false);
 
   const setQ = (key: string, v: number) => setQty((m) => ({ ...m, [key]: Math.max(0, v) }));
+
+  async function generateJustification() {
+    setGenBusy(true);
+    try {
+      const items = [
+        ...products.map((p) => ({ name: p.name, qty: qty[`PRODUCT_${p.id}`] ?? 0 })),
+        ...services.map((s) => ({ name: s.name, qty: qty[`SERVICE_${s.id}`] ?? 0 })),
+      ].filter((i) => i.qty > 0);
+      const res = await fetch("/api/ai/offer-justification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items, discountPercent: discount, dealName }),
+      });
+      const data = await res.json();
+      if (data?.text) setJustification(data.text);
+    } catch {
+      /* leave the field as-is on failure */
+    } finally {
+      setGenBusy(false);
+    }
+  }
 
   const subtotal =
     products.reduce((s, p) => s + p.price * (qty[`PRODUCT_${p.id}`] ?? 0), 0) +
@@ -106,12 +130,27 @@ export function OfferBuilder({
               />
             </div>
             <div className="sm:col-span-2">
-              <label className="text-sm font-medium">
-                Justification {discount > 0 && <span className="text-destructive">*</span>}
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">
+                  Justification {discount > 0 && <span className="text-destructive">*</span>}
+                </label>
+                {discount > 0 && (
+                  <button
+                    type="button"
+                    onClick={generateJustification}
+                    disabled={genBusy}
+                    className="inline-flex items-center gap-1 rounded-md border border-primary/40 bg-primary/5 px-2 py-1 text-xs font-medium text-primary transition hover:bg-primary/10 disabled:opacity-50"
+                  >
+                    <Sparkles className="h-3 w-3" /> {genBusy ? "Generating…" : "Generate with AI"}
+                  </button>
+                )}
+              </div>
               <input
-                name="discountJustification" placeholder={discount > 0 ? "Required for any discount" : "—"}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                name="discountJustification"
+                value={justification}
+                onChange={(e) => setJustification(e.target.value)}
+                placeholder={discount > 0 ? "Required for any discount — or click Generate with AI" : "—"}
+                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               />
             </div>
           </div>
