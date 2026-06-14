@@ -1,17 +1,17 @@
-// Sales Manager dashboard (SLICE SA-V4).
-// Shows immediately: stalled deals (>14d, flagged), deals past expected close,
-// pipeline by stage, pipeline by owner, and the 3-year WEIGHTED pipeline with a
-// quarter / half / year granularity toggle (?granularity=). Links to the
-// approval queue. Optional inline deal reassignment.
+// Sales Manager dashboard (SLICE SA-V4) — now rendered through the canvas ManagerScreen.
+// Server-side data + role guard + reassign action stay here; the screen is pure
+// presentation. The canvas screen has no slot for the inline deal-reassign form or
+// the quarter/half/year forecast toggle, so BOTH are KEPT as wired feature blocks
+// below the screen (restyled with canvas classes) — functionality over pixel-match.
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { prisma } from "@/lib/db";
 import { currentUser, dashboardPathForRole } from "@/lib/session";
 import { rollUp, type Granularity } from "@/lib/forecast";
-import { formatEUR } from "@/lib/utils";
+import { formatEUR, daysSince } from "@/lib/utils";
 import { forecastCategories } from "@/lib/targets";
-import { ForecastChart } from "@/components/forecast-chart";
-import { PipelineFunnel } from "@/components/pipeline-funnel";
+import { forecastNarrative } from "@/lib/ai/forecast-narrative";
 import {
   threeYearForecast,
   pipelineByStage,
@@ -21,12 +21,9 @@ import {
   listReps,
 } from "@/lib/reporting";
 import { reassignDeal } from "./actions";
-import { Suspense } from "react";
-import { ForecastNarrativeCard, ForecastNarrativeSkeleton } from "@/components/forecast-narrative-card";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { ManagerScreen, type ManagerScreenData } from "@/components/canvas/screens/ManagerScreen";
+import type { DealStage as CanvasDealStage } from "@/lib/canvas/types";
+import type { DealStage as PrismaDealStage } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +32,17 @@ const GRANULARITIES: Granularity[] = ["quarter", "half", "year"];
 function parseGranularity(v: string | undefined): Granularity {
   return v === "half" || v === "year" ? v : "quarter";
 }
+
+// Our Prisma DealStage -> canvas DealStage enum (the screen's funnel field is typed canvas).
+const STAGE_TO_CANVAS: Record<PrismaDealStage, CanvasDealStage> = {
+  INTEREST_SHOWN: "LEAD",
+  RFI_ANSWERED: "DISCOVERY",
+  RFP_OFFER_GIVEN: "PROPOSAL",
+  CUSTOMER_TEST: "QUALIFIED",
+  CONTRACT_NEGOTIATION: "NEGOTIATION",
+  WON: "CLOSED_WON",
+  LOST: "CLOSED_LOST",
+};
 
 export default async function ManagerPage({
   searchParams,
@@ -49,7 +57,7 @@ export default async function ManagerPage({
   const sp = await searchParams;
   const granularity = parseGranularity(sp.granularity);
 
-  const [forecast, byStage, byOwner, stalled, pastClose, reps, categories] =
+  const [forecast, byStage, byOwner, stalled, pastClose, reps, categories, pendingOffers] =
     await Promise.all([
       threeYearForecast(),
       pipelineByStage(),
@@ -58,143 +66,124 @@ export default async function ManagerPage({
       pastCloseDeals(),
       listReps(),
       forecastCategories(),
+      // Sales-Manager approval queue: offers awaiting first-step (SM) sign-off.
+      prisma.offer.findMany({
+        where: { status: "PENDING_SM" },
+        include: { account: true, deal: true },
+        orderBy: { updatedAt: "asc" },
+      }),
     ]);
 
   const buckets = rollUp(forecast.quarters, granularity);
   const stageMax = Math.max(1, ...byStage.map((s) => s.weightedRevenue));
   const ownerMax = Math.max(1, ...byOwner.map((o) => o.weightedRevenue));
 
+  // AI pipeline-health narrative (P2 #23) — same inputs as the standalone card.
+  const nearTermWeighted = forecast.quarters
+    .slice(0, 2)
+    .reduce((s, q) => s + q.weightedRevenue, 0);
+  const { text: aiPipelineHealth } = await forecastNarrative({
+    weightedTotal: forecast.totals.weightedRevenue,
+    totalRevenue: forecast.totals.totalRevenue,
+    deviceRevenue: forecast.totals.deviceRevenue,
+    serviceRevenue: forecast.totals.serviceRevenue,
+    nearTermWeighted,
+    quartersCount: forecast.quarters.length,
+    stalledCount: stalled.length,
+    pastCloseCount: pastClose.length,
+  });
+
+  const now = Date.now();
+
+  const data: ManagerScreenData = {
+    kpis: {
+      committed: categories.committed,
+      atRisk: categories.atRisk,
+      gapToTarget: categories.gapToTarget,
+      target: categories.target,
+    },
+    funnel: byStage.map((s) => ({
+      stage: STAGE_TO_CANVAS[s.stage],
+      label: s.label, // human stage label from STAGE_LABEL
+      count: s.count,
+      value: s.weightedRevenue,
+    })),
+    byOwner: byOwner.map((o) => ({
+      ownerId: o.ownerRepId,
+      ownerName: o.ownerName,
+      // We have no per-rep quota field in the brief -> stub quota/attainment (see stubbedFields).
+      quota: 0,
+      attainment: 0,
+      dealCount: o.count,
+    })),
+    stalled: stalled.map((d) => ({
+      id: d.id,
+      name: d.name,
+      accountName: d.accountName,
+      daysStalled: d.daysStalled,
+      amount: d.weightedRevenue,
+    })),
+    pastClose: pastClose.map((d) => ({
+      id: d.id,
+      name: d.name,
+      accountName: d.accountName,
+      daysOverdue: d.expectedCloseDate
+        ? Math.max(0, Math.round((now - d.expectedCloseDate.getTime()) / 86_400_000))
+        : 0,
+      amount: d.weightedRevenue,
+    })),
+    pendingApprovals: pendingOffers.map((o) => ({
+      id: o.id,
+      title: o.deal?.name ?? o.account.name,
+      accountName: o.account.name,
+      discountPercent: o.discountPercent,
+      total: o.total,
+      currency: "EUR", // Offer has no currency field; app is EUR-only (see lib/utils formatEUR).
+      // Simple policy-derived recommendation (no AI call): big discount -> reject, mild -> negotiate.
+      aiRecommended:
+        o.discountPercent >= 20 ? "REJECT" : o.discountPercent >= 10 ? "NEGOTIATE" : "APPROVE",
+    })),
+    aiPipelineHealth,
+  };
+
   return (
-    <main className="space-y-6">
-      <section className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">Sales Manager</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Team pipeline, stalled deals, and weighted 3-year forecast.
-          </p>
-        </div>
-        <Link href="/approvals">
-          <Button variant="outline" size="sm">
-            Approval queue
-          </Button>
-        </Link>
-      </section>
+    <div>
+      <ManagerScreen data={data} />
 
-      {/* AI pipeline-health narrative (P2 #23) */}
-      <Suspense fallback={<ForecastNarrativeSkeleton />}>
-        <ForecastNarrativeCard />
-      </Suspense>
-
-      {/* Quarter forecast — committed vs at-risk vs gap-to-target (SM persona #4) */}
-      <Card>
-        <CardHeader><CardTitle>Forecast vs target (3-yr weighted)</CardTitle></CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="rounded-md border border-border p-3">
-              <div className="text-xs text-muted-foreground">Committed</div>
-              <div className="mt-1 text-xl font-semibold text-emerald-600">{formatEUR(categories.committed)}</div>
-              <div className="text-xs text-muted-foreground">on-track, ≥70% stage</div>
-            </div>
-            <div className="rounded-md border border-border p-3">
-              <div className="text-xs text-muted-foreground">At risk</div>
-              <div className="mt-1 text-xl font-semibold text-destructive">{formatEUR(categories.atRisk)}</div>
-              <div className="text-xs text-muted-foreground">stalled / past close</div>
-            </div>
-            <div className="rounded-md border border-border p-3">
-              <div className="text-xs text-muted-foreground">Target</div>
-              <div className="mt-1 text-xl font-semibold">{formatEUR(categories.target)}</div>
-              <div className="text-xs text-muted-foreground">3-yr team target</div>
-            </div>
-            <div className="rounded-md border border-border p-3">
-              <div className="text-xs text-muted-foreground">Gap to target</div>
-              <div className="mt-1 text-xl font-semibold text-amber-600">{formatEUR(categories.gapToTarget)}</div>
-              <div className="text-xs text-muted-foreground">target − committed</div>
-            </div>
+      {/* ---- KEPT FEATURE: inline deal reassignment (no slot in ManagerScreen) ---- */}
+      <div className="p-6 lg:p-8 pt-0 space-y-6">
+        <section className="rounded-lg border border-border bg-card">
+          <div className="flex items-center justify-between border-b border-border px-5 py-3">
+            <div className="font-medium text-sm">Reassign stalled deals</div>
+            <span className="text-xs text-muted-foreground">{stalled.length} flagged</span>
           </div>
-          <div className="mt-4">
-            <ForecastChart quarters={forecast.quarters} />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* KPI strip */}
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-2xl font-semibold">
-              {formatEUR(forecast.totals.weightedRevenue)}
-            </div>
-            <div className="text-xs text-muted-foreground">
-              Weighted pipeline (3yr)
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-2xl font-semibold">
-              {byStage.reduce((s, r) => s + r.count, 0)}
-            </div>
-            <div className="text-xs text-muted-foreground">Open deals</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-2xl font-semibold text-amber-600">
-              {stalled.length}
-            </div>
-            <div className="text-xs text-muted-foreground">
-              Stalled (14+ days)
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-2xl font-semibold text-red-600">
-              {pastClose.length}
-            </div>
-            <div className="text-xs text-muted-foreground">Past close date</div>
-          </CardContent>
-        </Card>
-      </section>
-
-      {/* Stalled deals */}
-      <Card>
-        <CardHeader className="flex-row items-center justify-between space-y-0">
-          <CardTitle>Stalled deals — no activity in 14+ days</CardTitle>
-          <Badge variant="warning">{stalled.length} flagged</Badge>
-        </CardHeader>
-        <CardContent>
           {stalled.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="px-5 py-4 text-sm text-muted-foreground">
               No stalled deals. Every open deal has recent activity.
             </p>
           ) : (
-            <Table>
-              <THead>
-                <TR>
-                  <TH>Deal</TH>
-                  <TH>Account</TH>
-                  <TH>Owner</TH>
-                  <TH>Stage</TH>
-                  <TH className="text-right">Stalled</TH>
-                  <TH className="text-right">Weighted</TH>
-                  <TH>Reassign</TH>
-                </TR>
-              </THead>
-              <TBody>
+            <table className="w-full text-sm">
+              <thead className="text-xs uppercase tracking-wider text-muted-foreground">
+                <tr className="border-b border-border">
+                  <th className="px-5 py-2 text-left font-medium">Deal</th>
+                  <th className="px-3 py-2 text-left font-medium">Account</th>
+                  <th className="px-3 py-2 text-left font-medium">Owner</th>
+                  <th className="px-3 py-2 text-left font-medium">Stage</th>
+                  <th className="px-3 py-2 text-right font-medium">Stalled</th>
+                  <th className="px-3 py-2 text-right font-medium">Weighted</th>
+                  <th className="px-5 py-2 text-left font-medium">Reassign</th>
+                </tr>
+              </thead>
+              <tbody>
                 {stalled.map((d) => (
-                  <TR key={d.id}>
-                    <TD className="font-medium">{d.name}</TD>
-                    <TD className="text-muted-foreground">{d.accountName}</TD>
-                    <TD className="text-muted-foreground">{d.ownerName}</TD>
-                    <TD>{d.stageLabel}</TD>
-                    <TD className="text-right">
-                      <Badge variant="destructive">{d.daysStalled}d</Badge>
-                    </TD>
-                    <TD className="text-right tabular-nums">
-                      {formatEUR(d.weightedRevenue)}
-                    </TD>
-                    <TD>
+                  <tr key={d.id} className="border-b border-border/60 last:border-0">
+                    <td className="px-5 py-2.5 font-medium">{d.name}</td>
+                    <td className="px-3 py-2.5 text-muted-foreground">{d.accountName}</td>
+                    <td className="px-3 py-2.5 text-muted-foreground">{d.ownerName}</td>
+                    <td className="px-3 py-2.5">{d.stageLabel}</td>
+                    <td className="px-3 py-2.5 text-right text-destructive tabular-nums">{d.daysStalled}d</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums">{formatEUR(d.weightedRevenue)}</td>
+                    <td className="px-5 py-2.5">
                       <form action={reassignDeal} className="flex items-center gap-1">
                         <input type="hidden" name="dealId" value={d.id} />
                         <select
@@ -211,231 +200,141 @@ export default async function ManagerPage({
                             </option>
                           ))}
                         </select>
-                        <Button type="submit" size="sm" variant="outline">
+                        <button
+                          type="submit"
+                          className="inline-flex h-8 items-center rounded-md border border-border px-3 text-xs font-medium hover:bg-secondary"
+                        >
                           Go
-                        </Button>
+                        </button>
                       </form>
-                    </TD>
-                  </TR>
+                    </td>
+                  </tr>
                 ))}
-              </TBody>
-            </Table>
+              </tbody>
+            </table>
           )}
-        </CardContent>
-      </Card>
+        </section>
 
-      {/* Past expected close date */}
-      <Card>
-        <CardHeader className="flex-row items-center justify-between space-y-0">
-          <CardTitle>Deals past expected close date</CardTitle>
-          <Badge variant="destructive">{pastClose.length}</Badge>
-        </CardHeader>
-        <CardContent>
-          {pastClose.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No open deals are past their expected close date.
-            </p>
-          ) : (
-            <Table>
-              <THead>
-                <TR>
-                  <TH>Deal</TH>
-                  <TH>Account</TH>
-                  <TH>Owner</TH>
-                  <TH>Stage</TH>
-                  <TH>Expected close</TH>
-                  <TH className="text-right">Weighted</TH>
-                </TR>
-              </THead>
-              <TBody>
-                {pastClose.map((d) => (
-                  <TR key={d.id}>
-                    <TD className="font-medium">{d.name}</TD>
-                    <TD className="text-muted-foreground">{d.accountName}</TD>
-                    <TD className="text-muted-foreground">{d.ownerName}</TD>
-                    <TD>{d.stageLabel}</TD>
-                    <TD className="text-red-600">
-                      {d.expectedCloseDate
-                        ? d.expectedCloseDate.toISOString().slice(0, 10)
-                        : "—"}
-                    </TD>
-                    <TD className="text-right tabular-nums">
-                      {formatEUR(d.weightedRevenue)}
-                    </TD>
-                  </TR>
-                ))}
-              </TBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Pipeline funnel */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Pipeline funnel</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <PipelineFunnel rows={byStage} />
-        </CardContent>
-      </Card>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Pipeline by stage */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Pipeline by stage (weighted)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <THead>
-                <TR>
-                  <TH>Stage</TH>
-                  <TH className="text-right">Prob</TH>
-                  <TH className="text-right">Deals</TH>
-                  <TH className="text-right">Weighted</TH>
-                </TR>
-              </THead>
-              <TBody>
+        {/* ---- KEPT FEATURE: pipeline by stage / by owner (weighted bars) ---- */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          <section className="rounded-lg border border-border bg-card">
+            <div className="border-b border-border px-5 py-3 font-medium text-sm">Pipeline by stage (weighted)</div>
+            <table className="w-full text-sm">
+              <thead className="text-xs uppercase tracking-wider text-muted-foreground">
+                <tr className="border-b border-border">
+                  <th className="px-5 py-2 text-left font-medium">Stage</th>
+                  <th className="px-3 py-2 text-right font-medium">Prob</th>
+                  <th className="px-3 py-2 text-right font-medium">Deals</th>
+                  <th className="px-5 py-2 text-right font-medium">Weighted</th>
+                </tr>
+              </thead>
+              <tbody>
                 {byStage.map((s) => (
-                  <TR key={s.stage}>
-                    <TD>
+                  <tr key={s.stage} className="border-b border-border/60 last:border-0">
+                    <td className="px-5 py-2.5">
                       <div className="font-medium">{s.label}</div>
-                      <div className="mt-1 h-1.5 w-full rounded-full bg-muted">
-                        <div
-                          className="h-1.5 rounded-full bg-primary"
-                          style={{
-                            width: `${(s.weightedRevenue / stageMax) * 100}%`,
-                          }}
-                        />
+                      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+                        <div className="h-1.5 rounded-full ai-gradient" style={{ width: `${(s.weightedRevenue / stageMax) * 100}%` }} />
                       </div>
-                    </TD>
-                    <TD className="text-right text-muted-foreground">
-                      {s.probability}%
-                    </TD>
-                    <TD className="text-right">{s.count}</TD>
-                    <TD className="text-right tabular-nums">
-                      {formatEUR(s.weightedRevenue)}
-                    </TD>
-                  </TR>
+                    </td>
+                    <td className="px-3 py-2.5 text-right text-muted-foreground">{s.probability}%</td>
+                    <td className="px-3 py-2.5 text-right">{s.count}</td>
+                    <td className="px-5 py-2.5 text-right tabular-nums">{formatEUR(s.weightedRevenue)}</td>
+                  </tr>
                 ))}
-              </TBody>
-            </Table>
-          </CardContent>
-        </Card>
+              </tbody>
+            </table>
+          </section>
 
-        {/* Pipeline by owner */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Pipeline by owner (weighted)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <THead>
-                <TR>
-                  <TH>Rep</TH>
-                  <TH className="text-right">Deals</TH>
-                  <TH className="text-right">Weighted</TH>
-                </TR>
-              </THead>
-              <TBody>
+          <section className="rounded-lg border border-border bg-card">
+            <div className="border-b border-border px-5 py-3 font-medium text-sm">Pipeline by owner (weighted)</div>
+            <table className="w-full text-sm">
+              <thead className="text-xs uppercase tracking-wider text-muted-foreground">
+                <tr className="border-b border-border">
+                  <th className="px-5 py-2 text-left font-medium">Rep</th>
+                  <th className="px-3 py-2 text-right font-medium">Deals</th>
+                  <th className="px-5 py-2 text-right font-medium">Weighted</th>
+                </tr>
+              </thead>
+              <tbody>
                 {byOwner.map((o) => (
-                  <TR key={o.ownerRepId}>
-                    <TD>
+                  <tr key={o.ownerRepId} className="border-b border-border/60 last:border-0">
+                    <td className="px-5 py-2.5">
                       <div className="font-medium">{o.ownerName}</div>
-                      <div className="mt-1 h-1.5 w-full rounded-full bg-muted">
-                        <div
-                          className="h-1.5 rounded-full bg-primary"
-                          style={{
-                            width: `${(o.weightedRevenue / ownerMax) * 100}%`,
-                          }}
-                        />
+                      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+                        <div className="h-1.5 rounded-full ai-gradient" style={{ width: `${(o.weightedRevenue / ownerMax) * 100}%` }} />
                       </div>
-                    </TD>
-                    <TD className="text-right">{o.count}</TD>
-                    <TD className="text-right tabular-nums">
-                      {formatEUR(o.weightedRevenue)}
-                    </TD>
-                  </TR>
+                    </td>
+                    <td className="px-3 py-2.5 text-right">{o.count}</td>
+                    <td className="px-5 py-2.5 text-right tabular-nums">{formatEUR(o.weightedRevenue)}</td>
+                  </tr>
                 ))}
-              </TBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </div>
+              </tbody>
+            </table>
+          </section>
+        </div>
 
-      {/* 3-year weighted forecast with granularity toggle */}
-      <Card>
-        <CardHeader className="flex-row items-center justify-between space-y-0">
-          <CardTitle>3-year weighted pipeline</CardTitle>
-          <div className="flex items-center gap-1">
-            {GRANULARITIES.map((g) => (
-              <Link key={g} href={`/manager?granularity=${g}`} scroll={false}>
-                <Badge variant={g === granularity ? "default" : "outline"}>
+        {/* ---- KEPT FEATURE: 3-year weighted forecast + granularity toggle ---- */}
+        <section className="rounded-lg border border-border bg-card">
+          <div className="flex items-center justify-between border-b border-border px-5 py-3">
+            <div className="font-medium text-sm">3-year weighted pipeline</div>
+            <div className="flex items-center gap-1">
+              {GRANULARITIES.map((g) => (
+                <Link
+                  key={g}
+                  href={`/manager?granularity=${g}`}
+                  scroll={false}
+                  className={`rounded-full border px-2.5 py-0.5 text-xs ${
+                    g === granularity
+                      ? "border-transparent bg-primary text-primary-foreground"
+                      : "border-border text-muted-foreground hover:bg-secondary"
+                  }`}
+                >
                   {g === "quarter" ? "Quarter" : g === "half" ? "Half-year" : "Year"}
-                </Badge>
-              </Link>
-            ))}
+                </Link>
+              ))}
+            </div>
           </div>
-        </CardHeader>
-        <CardContent>
-          {buckets.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No forecast periods yet.
-            </p>
-          ) : (
-            <Table>
-              <THead>
-                <TR>
-                  <TH>Period</TH>
-                  <TH className="text-right">Device €</TH>
-                  <TH className="text-right">Service €</TH>
-                  <TH className="text-right">Total €</TH>
-                  <TH className="text-right">Weighted €</TH>
-                </TR>
-              </THead>
-              <TBody>
-                {buckets.map((b) => (
-                  <TR key={b.label}>
-                    <TD className="font-medium">{b.label}</TD>
-                    <TD className="text-right tabular-nums">
-                      {formatEUR(b.deviceRevenue)}
-                    </TD>
-                    <TD className="text-right tabular-nums">
-                      {formatEUR(b.serviceRevenue)}
-                    </TD>
-                    <TD className="text-right tabular-nums text-muted-foreground">
-                      {formatEUR(b.totalRevenue)}
-                    </TD>
-                    <TD className="text-right font-semibold tabular-nums">
-                      {formatEUR(b.weightedRevenue)}
-                    </TD>
-                  </TR>
-                ))}
-                <TR className="border-t-2 font-semibold">
-                  <TD>Total</TD>
-                  <TD className="text-right tabular-nums">
-                    {formatEUR(forecast.totals.deviceRevenue)}
-                  </TD>
-                  <TD className="text-right tabular-nums">
-                    {formatEUR(forecast.totals.serviceRevenue)}
-                  </TD>
-                  <TD className="text-right tabular-nums">
-                    {formatEUR(forecast.totals.totalRevenue)}
-                  </TD>
-                  <TD className="text-right tabular-nums">
-                    {formatEUR(forecast.totals.weightedRevenue)}
-                  </TD>
-                </TR>
-              </TBody>
-            </Table>
-          )}
-          <p className="mt-3 text-xs text-muted-foreground">
-            Time-phased rows, weighted by stage probability. Device and service
-            revenue kept separate.
+          <div className="p-0">
+            {buckets.length === 0 ? (
+              <p className="px-5 py-4 text-sm text-muted-foreground">No forecast periods yet.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="text-xs uppercase tracking-wider text-muted-foreground">
+                  <tr className="border-b border-border">
+                    <th className="px-5 py-2 text-left font-medium">Period</th>
+                    <th className="px-3 py-2 text-right font-medium">Device €</th>
+                    <th className="px-3 py-2 text-right font-medium">Service €</th>
+                    <th className="px-3 py-2 text-right font-medium">Total €</th>
+                    <th className="px-5 py-2 text-right font-medium">Weighted €</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {buckets.map((b) => (
+                    <tr key={b.label} className="border-b border-border/60">
+                      <td className="px-5 py-2.5 font-medium">{b.label}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums">{formatEUR(b.deviceRevenue)}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums">{formatEUR(b.serviceRevenue)}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums text-muted-foreground">{formatEUR(b.totalRevenue)}</td>
+                      <td className="px-5 py-2.5 text-right font-semibold tabular-nums text-warning">{formatEUR(b.weightedRevenue)}</td>
+                    </tr>
+                  ))}
+                  <tr className="border-t-2 border-border font-semibold">
+                    <td className="px-5 py-2.5">Total</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums">{formatEUR(forecast.totals.deviceRevenue)}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums">{formatEUR(forecast.totals.serviceRevenue)}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums">{formatEUR(forecast.totals.totalRevenue)}</td>
+                    <td className="px-5 py-2.5 text-right tabular-nums">{formatEUR(forecast.totals.weightedRevenue)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            )}
+          </div>
+          <p className="px-5 py-3 text-xs text-muted-foreground">
+            Time-phased rows, weighted by stage probability. Device and service revenue kept separate.
           </p>
-        </CardContent>
-      </Card>
-    </main>
+        </section>
+      </div>
+    </div>
   );
 }

@@ -16,7 +16,8 @@ export interface SearchScreenData {
   hits: SearchHit[];
 }
 
-const hrefForHit = (h: SearchHit) => `/${h.kind === "case" ? "cases" : h.kind + "s"}/${h.id}`;
+const hrefForHit = (h: SearchHit) =>
+  h.kind === "case" ? `/cases/${h.id}` : h.kind === "contact" ? `/accounts/${h.id}` : `/${h.kind}s/${h.id}`;
 
 export function SearchScreen({ data }: { data: SearchScreenData }) {
   return (

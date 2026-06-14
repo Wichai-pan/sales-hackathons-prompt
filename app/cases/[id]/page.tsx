@@ -1,7 +1,10 @@
-// Case detail (SA-V3). Status / priority / account / service / contact +
-// description, threaded notes (internal-vs-working tier, author name + role),
-// and the account activity history. Actions: add note, change status, close,
-// escalate — all wired to the server actions in ../actions.ts.
+// Case detail (SA-V3) — now rendered through the canvas CaseDetailScreen.
+// Server-side data fetching, role-aware notes, and the wired case mutations stay
+// here; the screen renders the read-only presentation (header, AI summary,
+// threaded conversation, facts). Because our Prisma case status/priority enums
+// and our add-note `internal` flag don't line up 1:1 with the screen's built-in
+// action forms, we KEEP our real wired forms (restyled with canvas classes) and
+// append them below the screen so NO functionality is lost.
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -16,13 +19,10 @@ import {
   reassignCase,
 } from "@/app/cases/actions";
 import { prisma } from "@/lib/db";
-import { Suspense } from "react";
-import { CaseSummaryCard, CaseSummarySkeleton } from "@/components/case-summary-card";
-import { MIN_NOTES_FOR_SUMMARY } from "@/lib/ai/case-summary";
+import { caseSummary, MIN_NOTES_FOR_SUMMARY } from "@/lib/ai/case-summary";
 import { slaStatus } from "@/lib/sla";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { CaseDetailScreen, type CaseDetailScreenData } from "@/components/canvas/screens/CaseDetailScreen";
+import type { Case as CanvasCase, CaseStatus as CanvasCaseStatus, CasePriority } from "@/lib/canvas/types";
 
 export const dynamic = "force-dynamic";
 
@@ -33,43 +33,22 @@ const ROLE_LABEL: Record<Role, string> = {
   FINANCE: "Finance",
 };
 
-const STATUS_OPTIONS: CaseStatus[] = [
-  "OPEN",
-  "IN_PROGRESS",
-  "ESCALATED",
-  "CLOSED",
-];
+// Our Prisma enum is the source of truth for the wired change-status form.
+const STATUS_OPTIONS: CaseStatus[] = ["OPEN", "IN_PROGRESS", "ESCALATED", "CLOSED"];
 
-function priorityBadge(priority: Priority) {
-  const variant =
-    priority === "CRITICAL"
-      ? "destructive"
-      : priority === "HIGH"
-      ? "warning"
-      : priority === "MEDIUM"
-      ? "secondary"
-      : "outline";
-  return <Badge variant={variant as never}>{priority}</Badge>;
-}
+const STATUS_TO_CANVAS: Record<CaseStatus, CanvasCaseStatus> = {
+  OPEN: "OPEN",
+  IN_PROGRESS: "IN_PROGRESS",
+  ESCALATED: "WAITING",
+  CLOSED: "CLOSED",
+};
 
-function statusBadge(status: CaseStatus) {
-  const variant =
-    status === "CLOSED"
-      ? "secondary"
-      : status === "ESCALATED"
-      ? "destructive"
-      : status === "IN_PROGRESS"
-      ? "default"
-      : "warning";
-  return <Badge variant={variant as never}>{status.replaceAll("_", " ")}</Badge>;
-}
-
-function fmt(date: Date) {
-  return new Intl.DateTimeFormat("en-IE", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
-}
+const PRIORITY_TO_CANVAS: Record<Priority, CasePriority> = {
+  LOW: "P4",
+  MEDIUM: "P3",
+  HIGH: "P2",
+  CRITICAL: "P1",
+};
 
 export default async function CaseDetailPage({
   params,
@@ -80,7 +59,7 @@ export default async function CaseDetailPage({
   const kase = await caseDetail(id);
   if (!kase) notFound();
 
-  const [notes, activity, tams] = await Promise.all([
+  const [notes, , tams] = await Promise.all([
     caseNotes(id),
     caseActivity(kase.accountId),
     prisma.user.findMany({ where: { role: "TAM" }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
@@ -88,284 +67,239 @@ export default async function CaseDetailPage({
 
   const isClosed = kase.status === "CLOSED";
 
-  // ---- Server-action form adapters (bind the caseId, read FormData) ----
-  async function addNoteAction(formData: FormData) {
-    "use server";
-    const body = String(formData.get("body") ?? "");
-    const internal = formData.get("internal") === "on";
-    await addCaseNote(id, body, internal);
+  // AI case summary (P2 #22) — only once the case has accumulated enough notes.
+  // The canvas screen takes a plain string, so we resolve it here (server-side).
+  let aiSummary: string | undefined;
+  if (notes.length >= MIN_NOTES_FOR_SUMMARY) {
+    const { text } = await caseSummary({
+      title: kase.title,
+      description: kase.description,
+      // caseNotes() returns newest-first; the summariser expects oldest-first.
+      notes: [...notes].reverse().map((n) => n.body),
+    });
+    aiSummary = text;
   }
 
-  async function changeStatusAction(formData: FormData) {
-    "use server";
-    const status = String(formData.get("status") ?? "") as CaseStatus;
-    if (STATUS_OPTIONS.includes(status)) {
-      await changeCaseStatus(id, status);
-    }
-  }
+  // ---- Map our Prisma rows to the screen's CaseDetailScreenData ----
+  const screenCase: CanvasCase = {
+    id: kase.id,
+    accountId: kase.accountId,
+    accountName: kase.account.name,
+    title: kase.title,
+    description: kase.description ?? undefined,
+    status: STATUS_TO_CANVAS[kase.status],
+    priority: PRIORITY_TO_CANVAS[kase.priority],
+    dueDate: kase.dueDate ? kase.dueDate.toISOString().slice(0, 10) : undefined,
+    closedAt: kase.closedAt ? kase.closedAt.toISOString() : undefined,
+    ownerId: kase.assignedTamId ?? undefined,
+    ownerName: kase.assignedTam?.name ?? undefined,
+    contactName: kase.customerContact?.name ?? undefined,
+    serviceName: kase.service?.name ?? undefined,
+  };
 
-  async function closeAction() {
-    "use server";
-    await closeCase(id);
-  }
+  const screenData: CaseDetailScreenData = {
+    case: screenCase,
+    // caseNotes() is newest-first; show oldest-first in the conversation thread.
+    notes: [...notes].reverse().map((n) => ({
+      id: n.id,
+      body: n.body,
+      visibility: n.internal ? "INTERNAL" : "WORKING",
+      authorName: n.author.name,
+      createdAt: n.createdAt.toISOString(),
+    })),
+    assignees: tams,
+    aiSummary,
+    // Action props intentionally omitted: the screen's built-in forms use canvas
+    // enum values / a `visibility` select that our Prisma actions don't accept.
+    // We keep our real wired forms (below) as the authoritative, working controls.
+  };
 
-  async function escalateAction() {
-    "use server";
-    await escalateCase(id);
-  }
+  // ---- Wired server-action forms (kept; restyled with canvas classes) ----
+  const sla = slaStatus(kase.dueDate, kase.closedAt);
 
   return (
-    <main className="space-y-6">
-      <section className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs text-muted-foreground">
-            <Link href="/tam" className="hover:text-foreground hover:underline">
-              My cases
-            </Link>{" "}
-            / Case
-          </p>
-          <h1 className="mt-1 text-2xl font-semibold">{kase.title}</h1>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            {statusBadge(kase.status)}
-            {priorityBadge(kase.priority)}
+    <div className="space-y-6">
+      <CaseDetailScreen data={screenData} />
+
+      {/* ---- Authoritative wired actions (real Prisma mutations) ---- */}
+      <div className="px-6 lg:px-8 pb-8">
+        <div className="rounded-lg border border-border bg-card p-5 space-y-5">
+          <div className="flex items-center justify-between">
+            <div className="text-sm font-medium">Case actions</div>
             <span className="text-xs text-muted-foreground">
               Opened {daysSince(kase.createdAt)}d ago
-              {kase.closedAt ? ` · closed ${fmt(kase.closedAt)}` : ""}
+              {sla === "overdue" && " · SLA overdue"}
+              {sla === "approaching" && " · SLA due soon"}
             </span>
           </div>
-        </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <form action={escalateAction}>
-            <Button
-              type="submit"
-              variant="outline"
-              size="sm"
-              disabled={kase.status === "ESCALATED"}
-            >
-              Escalate to 3rd party
-            </Button>
-          </form>
-          <form action={closeAction}>
-            <Button
-              type="submit"
-              variant="destructive"
-              size="sm"
-              disabled={isClosed}
-            >
-              Close case
-            </Button>
-          </form>
-        </div>
-      </section>
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* ---- Left: details + status control + notes ---- */}
-        <div className="space-y-6 lg:col-span-2">
-          {/* AI case summary (P2 #22) — only once the case has accumulated enough notes */}
-          {notes.length >= MIN_NOTES_FOR_SUMMARY && (
-            <Suspense fallback={<CaseSummarySkeleton />}>
-              <CaseSummaryCard
-                title={kase.title}
-                description={kase.description}
-                notes={notes.map((n) => n.body)}
-              />
-            </Suspense>
-          )}
-          <Card>
-            <CardHeader>
-              <CardTitle>Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
-                <div>
-                  <dt className="text-xs text-muted-foreground">Account</dt>
-                  <dd className="font-medium">{kase.account.name}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-muted-foreground">Linked service</dt>
-                  <dd className="font-medium">{kase.service?.name ?? "—"}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-muted-foreground">Customer contact</dt>
-                  <dd className="font-medium">
-                    {kase.customerContact
-                      ? `${kase.customerContact.name}${
-                          kase.customerContact.title
-                            ? ` · ${kase.customerContact.title}`
-                            : ""
-                        }`
-                      : "—"}
-                    {kase.customerContact?.email && (
-                      <span className="block text-xs font-normal text-muted-foreground">
-                        {kase.customerContact.email}
-                      </span>
-                    )}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-muted-foreground">Assigned TAM</dt>
-                  <dd className="font-medium">
-                    {kase.assignedTam?.name ?? "Unassigned"}
-                    <form action={reassignCase} className="mt-1 flex items-center gap-1">
-                      <input type="hidden" name="caseId" value={kase.id} />
-                      <select name="tamId" defaultValue={kase.assignedTamId ?? ""} className="rounded-md border border-input bg-background px-2 py-1 text-xs">
-                        <option value="" disabled>Reassign to…</option>
-                        {tams.map((t) => (
-                          <option key={t.id} value={t.id}>{t.name}</option>
-                        ))}
-                      </select>
-                      <button type="submit" className="rounded-md border border-input px-2 py-1 text-xs hover:bg-muted">Reassign</button>
-                    </form>
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-muted-foreground">SLA due</dt>
-                  <dd className="font-medium">
-                    {kase.dueDate ? kase.dueDate.toISOString().slice(0, 10) : "—"}
-                    {slaStatus(kase.dueDate, kase.closedAt) === "overdue" && (
-                      <Badge variant="destructive" className="ml-2">Overdue</Badge>
-                    )}
-                    {slaStatus(kase.dueDate, kase.closedAt) === "approaching" && (
-                      <Badge variant="secondary" className="ml-2">Due soon</Badge>
-                    )}
-                  </dd>
-                </div>
-              </dl>
-
-              <div>
-                <dt className="text-xs text-muted-foreground">Description</dt>
-                <dd className="mt-1 whitespace-pre-wrap text-sm">
-                  {kase.description?.trim() || "No description provided."}
-                </dd>
-              </div>
-
-              {/* Change status */}
-              <form
-                action={changeStatusAction}
-                className="flex flex-wrap items-end gap-2 border-t pt-4"
-              >
-                <div>
-                  <label className="text-xs text-muted-foreground" htmlFor="status">
-                    Change status
-                  </label>
-                  <select
-                    id="status"
-                    name="status"
-                    defaultValue={kase.status}
-                    className="mt-1 block h-9 rounded-md border border-input bg-background px-3 text-sm"
-                  >
-                    {STATUS_OPTIONS.map((s) => (
-                      <option key={s} value={s}>
-                        {s.replaceAll("_", " ")}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <Button type="submit" size="sm" variant="secondary">
-                  Update status
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Notes ({notes.length})</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Add note */}
-              <form action={addNoteAction} className="space-y-2">
-                <textarea
-                  name="body"
-                  required
-                  rows={3}
-                  placeholder="Add a note for this case…"
-                  className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          {/* Add note (with internal checkbox) */}
+          <form
+            action={async (formData: FormData) => {
+              "use server";
+              const body = String(formData.get("body") ?? "");
+              const internal = formData.get("internal") === "on";
+              await addCaseNote(id, body, internal);
+            }}
+            className="space-y-2"
+          >
+            <textarea
+              name="body"
+              required
+              rows={3}
+              placeholder="Add a note for this case…"
+              className="block w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+            />
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                <input
+                  type="checkbox"
+                  name="internal"
+                  className="h-4 w-4 rounded border-border"
                 />
-                <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <input
-                      type="checkbox"
-                      name="internal"
-                      className="h-4 w-4 rounded border-input"
-                    />
-                    Internal note (not shown to customer)
-                  </label>
-                  <Button type="submit" size="sm">
-                    Add note
-                  </Button>
-                </div>
-              </form>
+                Internal note (not shown to customer)
+              </label>
+              <button
+                type="submit"
+                className="inline-flex h-8 items-center rounded-md ai-gradient px-3 text-xs font-medium text-white hover:opacity-90"
+              >
+                Add note
+              </button>
+            </div>
+          </form>
 
-              {/* Threaded notes */}
-              <ul className="space-y-3 border-t pt-4">
-                {notes.length === 0 && (
-                  <li className="text-sm text-muted-foreground">No notes yet.</li>
+          <div className="grid gap-3 border-t border-border pt-4 sm:grid-cols-2">
+            {/* Change status (our Prisma enum values) */}
+            <form
+              action={async (formData: FormData) => {
+                "use server";
+                const status = String(formData.get("status") ?? "") as CaseStatus;
+                if (STATUS_OPTIONS.includes(status)) {
+                  await changeCaseStatus(id, status);
+                }
+              }}
+              className="flex items-end gap-2"
+            >
+              <div className="flex-1">
+                <label className="text-xs text-muted-foreground" htmlFor="status">
+                  Change status
+                </label>
+                <select
+                  id="status"
+                  name="status"
+                  defaultValue={kase.status}
+                  className="mt-1 block h-9 w-full rounded-lg border border-border bg-background px-3 text-sm"
+                >
+                  {STATUS_OPTIONS.map((s) => (
+                    <option key={s} value={s}>
+                      {s.replaceAll("_", " ")}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button
+                type="submit"
+                className="inline-flex h-9 items-center rounded-lg bg-secondary px-3 text-sm font-medium text-secondary-foreground hover:bg-secondary/80"
+              >
+                Update
+              </button>
+            </form>
+
+            {/* Reassign TAM */}
+            <form action={reassignCase} className="flex items-end gap-2">
+              <input type="hidden" name="caseId" value={kase.id} />
+              <div className="flex-1">
+                <label className="text-xs text-muted-foreground" htmlFor="tamId">
+                  Assigned TAM
+                </label>
+                <select
+                  id="tamId"
+                  name="tamId"
+                  defaultValue={kase.assignedTamId ?? ""}
+                  className="mt-1 block h-9 w-full rounded-lg border border-border bg-background px-3 text-sm"
+                >
+                  <option value="" disabled>
+                    Reassign to…
+                  </option>
+                  {tams.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button
+                type="submit"
+                className="inline-flex h-9 items-center rounded-lg bg-secondary px-3 text-sm font-medium text-secondary-foreground hover:bg-secondary/80"
+              >
+                Reassign
+              </button>
+            </form>
+
+            {/* Escalate to 3rd party */}
+            <form
+              action={async () => {
+                "use server";
+                await escalateCase(id);
+              }}
+            >
+              <button
+                type="submit"
+                disabled={kase.status === "ESCALATED"}
+                className={cn(
+                  "inline-flex h-9 w-full items-center justify-center rounded-lg border border-border bg-card px-3 text-sm font-medium hover:bg-secondary",
+                  kase.status === "ESCALATED" && "pointer-events-none opacity-50"
                 )}
+              >
+                Escalate to 3rd party
+              </button>
+            </form>
+
+            {/* Close case */}
+            <form
+              action={async () => {
+                "use server";
+                await closeCase(id);
+              }}
+            >
+              <button
+                type="submit"
+                disabled={isClosed}
+                className={cn(
+                  "inline-flex h-9 w-full items-center justify-center rounded-lg bg-destructive px-3 text-sm font-medium text-destructive-foreground hover:bg-destructive/90",
+                  isClosed && "pointer-events-none opacity-50"
+                )}
+              >
+                Close case
+              </button>
+            </form>
+          </div>
+
+          {/* Note authors with role context (preserved from the original page) */}
+          {notes.length > 0 && (
+            <div className="border-t border-border pt-4">
+              <div className="mb-2 text-xs uppercase tracking-wider text-muted-foreground">
+                Note authors
+              </div>
+              <ul className="flex flex-wrap gap-2 text-xs text-muted-foreground">
                 {notes.map((n) => (
-                  <li
-                    key={n.id}
-                    className={cn(
-                      "rounded-md border p-3 text-sm",
-                      n.internal && "border-amber-200 bg-amber-50"
-                    )}
-                  >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-medium">{n.author.name}</span>
-                      <Badge variant="outline">{ROLE_LABEL[n.author.role]}</Badge>
-                      {n.internal && (
-                        <Badge variant="warning">Internal</Badge>
-                      )}
-                      <span className="text-xs text-muted-foreground">
-                        {fmt(n.createdAt)}
-                      </span>
-                    </div>
-                    <p className="mt-1 whitespace-pre-wrap">{n.body}</p>
+                  <li key={n.id} className="rounded-md border border-border px-2 py-1">
+                    {n.author.name} · {ROLE_LABEL[n.author.role]}
+                    {n.internal ? " · Internal" : ""}
                   </li>
                 ))}
               </ul>
-            </CardContent>
-          </Card>
+            </div>
+          )}
         </div>
 
-        {/* ---- Right: activity history ---- */}
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Activity</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {activity.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No activity yet.</p>
-              ) : (
-                <ol className="space-y-3">
-                  {activity.map((e) => {
-                    const onThisCase =
-                      e.linkedRecordType === "CASE" && e.linkedRecordId === id;
-                    return (
-                      <li key={e.id} className="text-sm">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={cn(
-                              "mt-0.5 inline-block h-2 w-2 shrink-0 rounded-full",
-                              onThisCase ? "bg-primary" : "bg-muted-foreground/40"
-                            )}
-                          />
-                          <span className="text-xs text-muted-foreground">
-                            {fmt(e.createdAt)}
-                          </span>
-                        </div>
-                        <p className="ml-4 mt-0.5">{e.summary}</p>
-                      </li>
-                    );
-                  })}
-                </ol>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+        <Link
+          href="/tam"
+          className="mt-4 inline-block text-xs text-muted-foreground hover:text-foreground hover:underline"
+        >
+          ← Back to My cases
+        </Link>
       </div>
-    </main>
+    </div>
   );
 }

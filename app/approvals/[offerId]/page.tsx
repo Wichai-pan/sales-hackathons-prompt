@@ -1,22 +1,39 @@
-// Offer approval detail (SLICE SA-V2 / V).
-// Shows the line-item snapshots, pricing (subtotal / discount + justification / total),
-// lock state, the FULL approval history (SM + Finance rows), and — only for the role that
-// can act on the current status — the Approve/Reject decision panel.
+// Offer approval detail (SLICE SA-V2 / V) — now rendered through the canvas ApprovalDetailScreen.
+// Server-side data fetch + role/status gating stay here; the screen is pure presentation.
+// The Approve/Reject decision wiring is preserved: when (and only when) the current role can
+// act on the current offer status, we wire the screen's approve/reject form props to our
+// existing server actions via FormData adapters. Otherwise the decision forms stay inert and
+// we surface the same "who can act" messaging our original page showed.
 
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { currentRole } from "@/lib/session";
-import { formatEUR } from "@/lib/utils";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
-import type { OfferStatus, ApprovalStep, ApprovalStatus } from "@prisma/client";
-import { DecisionPanel } from "../decision-panel";
+import {
+  ApprovalDetailScreen,
+  type ApprovalDetailScreenData,
+} from "@/components/canvas/screens/ApprovalDetailScreen";
+import type {
+  Offer as CanvasOffer,
+  OfferStatus as CanvasOfferStatus,
+  OfferLineItem as CanvasOfferLineItem,
+  Approval as CanvasApproval,
+} from "@/lib/canvas/types";
+import type {
+  OfferStatus as PrismaOfferStatus,
+  OfferItemType as PrismaLineItemType,
+  ApprovalStatus as PrismaApprovalStatus,
+} from "@prisma/client";
+import {
+  approveAsSM,
+  rejectAsSM,
+  approveAsFinance,
+  rejectAsFinance,
+} from "../actions";
 
 export const dynamic = "force-dynamic";
 
-const STATUS_LABEL: Record<OfferStatus, string> = {
+// Our human-readable status labels (kept for the not-actionable messaging).
+const STATUS_LABEL: Record<PrismaOfferStatus, string> = {
   DRAFT: "Draft",
   SUBMITTED: "Submitted",
   PENDING_SM: "Pending Sales Manager",
@@ -27,31 +44,29 @@ const STATUS_LABEL: Record<OfferStatus, string> = {
   REJECTED: "Rejected",
 };
 
-const STEP_LABEL: Record<ApprovalStep, string> = {
-  SALES_MANAGER: "Sales Manager",
-  FINANCE: "Finance",
+// Prisma OfferStatus → canvas OfferStatus (per ENUM MAPPING).
+const OFFER_STATUS: Record<PrismaOfferStatus, CanvasOfferStatus> = {
+  DRAFT: "DRAFT",
+  SUBMITTED: "PENDING_SM",
+  PENDING_SM: "PENDING_SM",
+  SM_APPROVED: "PENDING_FINANCE",
+  PENDING_FINANCE: "PENDING_FINANCE",
+  FINANCE_APPROVED: "APPROVED",
+  APPROVED: "APPROVED",
+  REJECTED: "REJECTED",
 };
 
-function statusVariant(s: OfferStatus): "success" | "destructive" | "warning" | "secondary" {
-  if (s === "APPROVED") return "success";
-  if (s === "REJECTED") return "destructive";
-  if (s.startsWith("PENDING")) return "warning";
-  return "secondary";
-}
+const LINE_ITEM_TYPE: Record<PrismaLineItemType, CanvasOfferLineItem["itemType"]> = {
+  PRODUCT: "PRODUCT",
+  SERVICE: "SERVICE",
+};
 
-function approvalVariant(s: ApprovalStatus): "success" | "destructive" | "warning" {
-  if (s === "APPROVED") return "success";
-  if (s === "REJECTED") return "destructive";
-  return "warning";
-}
-
-function fmtDateTime(d: Date | null): string {
-  if (!d) return "—";
-  return new Intl.DateTimeFormat("en-IE", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(d);
-}
+// ApprovalStatus maps 1:1 (PENDING/APPROVED/REJECTED).
+const APPROVAL_STATUS: Record<PrismaApprovalStatus, CanvasApproval["status"]> = {
+  PENDING: "PENDING",
+  APPROVED: "APPROVED",
+  REJECTED: "REJECTED",
+};
 
 export default async function OfferApprovalDetailPage({
   params,
@@ -77,175 +92,95 @@ export default async function OfferApprovalDetailPage({
 
   if (!offer) notFound();
 
-  // Who can act right now?
+  // Who can act right now? (role + status gated — same rules as before)
   const canActAsSM = role === "SALES_MANAGER" && offer.status === "PENDING_SM";
   const canActAsFinance = role === "FINANCE" && offer.status === "PENDING_FINANCE";
+  const canAct = canActAsSM || canActAsFinance;
+
+  // FormData adapters → our existing, role-checked server actions. Only wired when the
+  // current role+status can act; the underlying actions re-enforce the role server-side.
+  async function approveAdapter(fd: FormData) {
+    "use server";
+    const comment = String(fd.get("comment") ?? "");
+    if (canActAsSM) await approveAsSM(offerId, comment);
+    else if (canActAsFinance) await approveAsFinance(offerId, comment);
+  }
+  async function rejectAdapter(fd: FormData) {
+    "use server";
+    const comment = String(fd.get("comment") ?? "");
+    if (canActAsSM) await rejectAsSM(offerId, comment);
+    else if (canActAsFinance) await rejectAsFinance(offerId, comment);
+  }
+
+  const mappedOffer: CanvasOffer = {
+    id: offer.id,
+    dealId: offer.dealId ?? undefined,
+    accountName: offer.account.name,
+    title: offer.deal ? offer.deal.name : `Offer for ${offer.account.name}`,
+    version: offer.version,
+    status: OFFER_STATUS[offer.status],
+    subtotal: offer.subtotal,
+    discountPercent: offer.discountPercent,
+    discountJustification: offer.discountJustification ?? undefined,
+    total: offer.total,
+    locked: offer.locked,
+    currency: "EUR",
+    preparedBy: offer.createdBy.name,
+    validUntil: undefined,
+  };
+
+  const lineItems: CanvasOfferLineItem[] = offer.lineItems.map((li) => ({
+    id: li.id,
+    offerId: offer.id,
+    itemType: LINE_ITEM_TYPE[li.itemType],
+    nameSnapshot: li.nameSnapshot,
+    // No sku snapshot in our schema → screen falls back to showing the item type.
+    skuSnapshot: undefined,
+    unitPriceSnapshot: li.unitPriceSnapshot,
+    quantity: li.quantity,
+    lineTotal: li.lineTotal,
+  }));
+
+  const history: CanvasApproval[] = offer.approvals.map((a) => ({
+    id: a.id,
+    offerId: offer.id,
+    step: a.step, // ApprovalStep maps 1:1 (SALES_MANAGER / FINANCE)
+    status: APPROVAL_STATUS[a.status],
+    approverId: a.approverId ?? undefined,
+    approverName: a.approver?.name ?? undefined,
+    comment: a.comment ?? undefined,
+    decidedAt: a.decidedAt ? a.decidedAt.toISOString() : undefined,
+  }));
+
+  const data: ApprovalDetailScreenData = {
+    offer: mappedOffer,
+    lineItems,
+    history,
+    // Only expose the decision forms when the role+status can actually act. When not
+    // actionable, leave the props undefined so the screen's forms fall back to noop and
+    // we render the gating message below.
+    approveAction: canAct ? approveAdapter : undefined,
+    rejectAction: canAct ? rejectAdapter : undefined,
+  };
 
   return (
-    <main className="space-y-6">
-      <section>
-        <Link href="/approvals" className="text-sm text-muted-foreground hover:text-foreground">
-          ← Back to approvals
-        </Link>
-        <div className="mt-2 flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-semibold">{offer.account.name}</h1>
-          <Badge variant={statusVariant(offer.status)}>{STATUS_LABEL[offer.status]}</Badge>
-          {offer.locked ? (
-            <Badge variant="secondary">🔒 Locked</Badge>
-          ) : (
-            <Badge variant="outline">Unlocked</Badge>
-          )}
-          <Badge variant="outline">v{offer.version}</Badge>
+    <>
+      <ApprovalDetailScreen data={data} />
+      {!canAct && (
+        <div className="px-6 lg:px-8 pb-6 -mt-2">
+          <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
+            {offer.status === "APPROVED"
+              ? "This offer is fully approved. No further action needed."
+              : offer.status === "REJECTED"
+                ? "This offer was rejected and unlocked for revision."
+                : offer.status === "PENDING_SM"
+                  ? "Awaiting Sales Manager approval. Only a Sales Manager can act here."
+                  : offer.status === "PENDING_FINANCE"
+                    ? "Awaiting Finance approval. Only Finance can act here."
+                    : `No approval action is available for this offer's current status (${STATUS_LABEL[offer.status]}).`}
+          </div>
         </div>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {offer.deal ? `Deal: ${offer.deal.name} · ` : ""}Created by {offer.createdBy.name}
-        </p>
-      </section>
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Line items + pricing */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Offer line items</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Table>
-              <THead>
-                <TR>
-                  <TH>Item</TH>
-                  <TH>Type</TH>
-                  <TH className="text-right">Unit price</TH>
-                  <TH className="text-right">Qty</TH>
-                  <TH className="text-right">Line total</TH>
-                </TR>
-              </THead>
-              <TBody>
-                {offer.lineItems.length === 0 ? (
-                  <TR>
-                    <TD className="text-muted-foreground" colSpan={5}>
-                      No line items on this offer.
-                    </TD>
-                  </TR>
-                ) : (
-                  offer.lineItems.map((li) => (
-                    <TR key={li.id}>
-                      <TD className="font-medium">{li.nameSnapshot}</TD>
-                      <TD>
-                        <Badge variant="outline">
-                          {li.itemType === "PRODUCT" ? "Product" : "Service"}
-                        </Badge>
-                      </TD>
-                      <TD className="text-right">{formatEUR(li.unitPriceSnapshot)}</TD>
-                      <TD className="text-right">{li.quantity}</TD>
-                      <TD className="text-right font-medium">{formatEUR(li.lineTotal)}</TD>
-                    </TR>
-                  ))
-                )}
-              </TBody>
-            </Table>
-
-            <div className="ml-auto w-full max-w-xs space-y-1 text-sm">
-              <div className="flex justify-between text-muted-foreground">
-                <span>Subtotal</span>
-                <span>{formatEUR(offer.subtotal)}</span>
-              </div>
-              <div className="flex justify-between text-muted-foreground">
-                <span>Discount</span>
-                <span>
-                  {offer.discountPercent}%{" "}
-                  {offer.discountPercent > 0 && (
-                    <span>(−{formatEUR(offer.subtotal - offer.total)})</span>
-                  )}
-                </span>
-              </div>
-              <div className="flex justify-between border-t pt-1 text-base font-semibold">
-                <span>Total</span>
-                <span>{formatEUR(offer.total)}</span>
-              </div>
-            </div>
-
-            {offer.discountPercent > 0 && (
-              <div className="rounded-md border bg-muted/30 p-3">
-                <div className="text-xs font-medium text-muted-foreground">
-                  Discount justification
-                </div>
-                <p className="mt-1 text-sm">
-                  {offer.discountJustification?.trim() || (
-                    <span className="text-destructive">Missing — required for any discount.</span>
-                  )}
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Decision panel (role + status gated) */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Decision</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {canActAsSM ? (
-              <DecisionPanel offerId={offer.id} step="SM" />
-            ) : canActAsFinance ? (
-              <DecisionPanel offerId={offer.id} step="FINANCE" />
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                {offer.status === "APPROVED"
-                  ? "This offer is fully approved. No further action needed."
-                  : offer.status === "REJECTED"
-                    ? "This offer was rejected and unlocked for revision."
-                    : offer.status === "PENDING_SM"
-                      ? "Awaiting Sales Manager approval. Only a Sales Manager can act here."
-                      : offer.status === "PENDING_FINANCE"
-                        ? "Awaiting Finance approval. Only Finance can act here."
-                        : "No approval action is available for this offer's current status."}
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Full approval history */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Approval history</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {offer.approvals.length === 0 ? (
-            <p className="py-4 text-sm text-muted-foreground">
-              No approval steps yet — this offer has not entered the approval chain.
-            </p>
-          ) : (
-            <Table>
-              <THead>
-                <TR>
-                  <TH>Step</TH>
-                  <TH>Status</TH>
-                  <TH>Approver</TH>
-                  <TH>Comment</TH>
-                  <TH>Decided</TH>
-                </TR>
-              </THead>
-              <TBody>
-                {offer.approvals.map((a) => (
-                  <TR key={a.id}>
-                    <TD className="font-medium">{STEP_LABEL[a.step]}</TD>
-                    <TD>
-                      <Badge variant={approvalVariant(a.status)}>{a.status}</Badge>
-                    </TD>
-                    <TD className="text-muted-foreground">{a.approver?.name ?? "—"}</TD>
-                    <TD className="max-w-[20rem] text-muted-foreground">
-                      {a.comment?.trim() || "—"}
-                    </TD>
-                    <TD className="text-muted-foreground">{fmtDateTime(a.decidedAt)}</TD>
-                  </TR>
-                ))}
-              </TBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-    </main>
+      )}
+    </>
   );
 }

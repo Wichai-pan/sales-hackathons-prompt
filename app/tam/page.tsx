@@ -1,20 +1,18 @@
-// TAM dashboard (SA-V3). The current user's assigned cases as a dense table,
-// sorted by priority (CRITICAL > HIGH > MEDIUM > LOW) then age (oldest first),
-// with a status filter. Non-TAM users still see it, flagged as the TAM view.
+// TAM dashboard (SA-V3) — now rendered through the canvas TamDashboardScreen.
+// Server-side data fetching (casesForTam), the status filter, and the priority/age
+// sort all stay here; the screen is pure presentation. Non-TAM users still see it.
 
 import Link from "next/link";
-import type { CaseStatus, Priority } from "@prisma/client";
+import type { CaseStatus as PrismaCaseStatus, Priority } from "@prisma/client";
 import { currentUser } from "@/lib/session";
 import { casesForTam } from "@/lib/cases";
-import { daysSince } from "@/lib/utils";
-import { slaStatus, slaLabel } from "@/lib/sla";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { slaStatus } from "@/lib/sla";
+import { TamDashboardScreen, type TamDashboardData } from "@/components/canvas/screens/TamDashboardScreen";
+import type { Case, CasePriority, CaseStatus } from "@/lib/canvas/types";
 
 export const dynamic = "force-dynamic";
 
-const STATUS_FILTERS: Array<{ value: "ALL" | CaseStatus; label: string }> = [
+const STATUS_FILTERS: Array<{ value: "ALL" | PrismaCaseStatus; label: string }> = [
   { value: "ALL", label: "All" },
   { value: "OPEN", label: "Open" },
   { value: "IN_PROGRESS", label: "In progress" },
@@ -22,36 +20,39 @@ const STATUS_FILTERS: Array<{ value: "ALL" | CaseStatus; label: string }> = [
   { value: "CLOSED", label: "Closed" },
 ];
 
-function priorityBadge(priority: Priority) {
-  const variant =
-    priority === "CRITICAL"
-      ? "destructive"
-      : priority === "HIGH"
-      ? "warning"
-      : priority === "MEDIUM"
-      ? "secondary"
-      : "outline";
-  return <Badge variant={variant as never}>{priority}</Badge>;
-}
+// Prisma Priority -> canvas CasePriority
+const PRIORITY_MAP: Record<Priority, CasePriority> = {
+  LOW: "P4",
+  MEDIUM: "P3",
+  HIGH: "P2",
+  CRITICAL: "P1",
+};
+const PRIORITY_ORDER: CasePriority[] = ["P1", "P2", "P3", "P4"];
 
-function slaBadge(dueDate: Date | null, closedAt: Date | null) {
-  const s = slaStatus(dueDate, closedAt);
-  if (s === "none") return <span className="text-muted-foreground">—</span>;
-  if (s === "overdue") return <Badge variant="destructive">{slaLabel(s)}</Badge>;
-  if (s === "approaching") return <Badge variant="secondary">{slaLabel(s)}</Badge>;
-  return <span className="text-muted-foreground">{slaLabel(s)}</span>;
-}
+// Prisma CaseStatus -> canvas CaseStatus
+const STATUS_MAP: Record<PrismaCaseStatus, CaseStatus> = {
+  OPEN: "OPEN",
+  IN_PROGRESS: "IN_PROGRESS",
+  ESCALATED: "WAITING",
+  CLOSED: "CLOSED",
+};
 
-function statusBadge(status: CaseStatus) {
-  const variant =
-    status === "CLOSED"
-      ? "secondary"
-      : status === "ESCALATED"
-      ? "destructive"
-      : status === "IN_PROGRESS"
-      ? "default"
-      : "warning";
-  return <Badge variant={variant as never}>{status.replaceAll("_", " ")}</Badge>;
+type TamCase = Awaited<ReturnType<typeof casesForTam>>[number];
+
+function toCanvasCase(c: TamCase): Case {
+  return {
+    id: c.id,
+    accountId: c.accountId,
+    accountName: c.account.name,
+    title: c.title,
+    description: c.description ?? undefined,
+    status: STATUS_MAP[c.status],
+    priority: PRIORITY_MAP[c.priority],
+    dueDate: c.dueDate ? c.dueDate.toISOString().slice(0, 10) : undefined,
+    closedAt: c.closedAt ? c.closedAt.toISOString().slice(0, 10) : undefined,
+    ownerId: c.assignedTamId ?? undefined,
+    serviceName: c.service?.name ?? undefined,
+  };
 }
 
 export default async function TamDashboardPage({
@@ -66,7 +67,7 @@ export default async function TamDashboardPage({
 
   const activeFilter = (
     STATUS_FILTERS.some((f) => f.value === status) ? status : "ALL"
-  ) as "ALL" | CaseStatus;
+  ) as "ALL" | PrismaCaseStatus;
 
   const cases =
     activeFilter === "ALL"
@@ -75,26 +76,66 @@ export default async function TamDashboardPage({
 
   const openCount = all.filter((c) => c.status !== "CLOSED").length;
 
-  return (
-    <main className="space-y-6">
-      <section className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">My cases</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {user
-              ? `Cases assigned to ${user.name} — ${openCount} open, ${all.length} total.`
-              : "No active user."}
-          </p>
-          {user && user.role !== "TAM" && (
-            <p className="mt-1 text-xs text-amber-700">
-              You are viewing the TAM dashboard as {user.role.replaceAll("_", " ")}.
-              These are cases assigned to you.
-            </p>
-          )}
-        </div>
-      </section>
+  // KPIs derived from the (unfiltered) assigned queue.
+  const overdueAll = all.filter((c) => slaStatus(c.dueDate, c.closedAt) === "overdue").length;
+  const escalatedAll = all.filter((c) => c.status === "ESCALATED").length;
+  const kpis: TamDashboardData["kpis"] = [
+    { label: "Total assigned", value: String(all.length) },
+    { label: "Open", value: String(openCount) },
+    { label: "SLA overdue", value: String(overdueAll) },
+    { label: "Escalated", value: String(escalatedAll) },
+  ];
 
-      <section className="flex flex-wrap gap-2">
+  // Presentation panels operate on the currently filtered set.
+  const canvasCases = cases.map(toCanvasCase);
+  const rawByCanvasPriority = new Map<CasePriority, TamCase[]>();
+  for (const c of cases) {
+    const p = PRIORITY_MAP[c.priority];
+    (rawByCanvasPriority.get(p) ?? rawByCanvasPriority.set(p, []).get(p)!).push(c);
+  }
+  const byPriority: TamDashboardData["byPriority"] = PRIORITY_ORDER.filter((p) =>
+    rawByCanvasPriority.has(p)
+  ).map((priority) => ({
+    priority,
+    cases: (rawByCanvasPriority.get(priority) ?? []).map(toCanvasCase),
+  }));
+
+  // byAge: time-to-due (SLA) bucketed for cases that have a due date and aren't closed.
+  const ageBuckets: TamDashboardData["byAge"] = [
+    { bucket: "0-4h", count: 0 },
+    { bucket: "4-24h", count: 0 },
+    { bucket: "1-3d", count: 0 },
+    { bucket: "3d+", count: 0 },
+  ];
+  for (const c of cases) {
+    if (!c.dueDate || c.closedAt) continue;
+    const hours = (c.dueDate.getTime() - Date.now()) / 3_600_000;
+    const b =
+      hours <= 4 ? ageBuckets[0] : hours <= 24 ? ageBuckets[1] : hours <= 72 ? ageBuckets[2] : ageBuckets[3];
+    b.count += 1;
+  }
+
+  const slaOverdue = canvasCases.filter((_, i) => slaStatus(cases[i].dueDate, cases[i].closedAt) === "overdue");
+  const slaDueSoon = canvasCases.filter((_, i) => slaStatus(cases[i].dueDate, cases[i].closedAt) === "approaching");
+
+  const data: TamDashboardData = {
+    ownerName: user?.name ?? "Unassigned",
+    kpis,
+    byPriority,
+    byAge: ageBuckets,
+    slaOverdue,
+    slaDueSoon,
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Status filter chips — the screen has no slot for this navigation feature, so we keep it. */}
+      <div className="flex flex-wrap items-center gap-2 px-6 pt-6 lg:px-8">
+        {user && user.role !== "TAM" && (
+          <span className="mr-2 rounded-md bg-warning/15 px-2 py-1 text-xs text-warning">
+            Viewing the TAM dashboard as {user.role.replaceAll("_", " ")} — these are cases assigned to you.
+          </span>
+        )}
         {STATUS_FILTERS.map((f) => {
           const isActive = f.value === activeFilter;
           const href = f.value === "ALL" ? "/tam" : `/tam?status=${f.value}`;
@@ -109,7 +150,7 @@ export default async function TamDashboardPage({
               className={
                 isActive
                   ? "inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground"
-                  : "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium text-muted-foreground hover:bg-muted/50"
+                  : "inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs font-medium text-muted-foreground hover:bg-secondary/40"
               }
             >
               {f.label}
@@ -117,66 +158,9 @@ export default async function TamDashboardPage({
             </Link>
           );
         })}
-      </section>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {activeFilter === "ALL"
-              ? "All assigned cases"
-              : `${STATUS_FILTERS.find((f) => f.value === activeFilter)?.label} cases`}{" "}
-            ({cases.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {cases.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              No cases match this filter.
-            </p>
-          ) : (
-            <Table>
-              <THead>
-                <TR>
-                  <TH>Title</TH>
-                  <TH>Account</TH>
-                  <TH>Service</TH>
-                  <TH>Priority</TH>
-                  <TH>Status</TH>
-                  <TH>SLA</TH>
-                  <TH className="text-right">Age</TH>
-                </TR>
-              </THead>
-              <TBody>
-                {cases.map((c) => {
-                  const age = daysSince(c.createdAt);
-                  return (
-                    <TR key={c.id}>
-                      <TD className="font-medium">
-                        <Link
-                          href={`/cases/${c.id}`}
-                          className="hover:text-primary hover:underline"
-                        >
-                          {c.title}
-                        </Link>
-                      </TD>
-                      <TD className="text-muted-foreground">{c.account.name}</TD>
-                      <TD className="text-muted-foreground">
-                        {c.service?.name ?? "—"}
-                      </TD>
-                      <TD>{priorityBadge(c.priority)}</TD>
-                      <TD>{statusBadge(c.status)}</TD>
-                      <TD>{slaBadge(c.dueDate, c.closedAt)}</TD>
-                      <TD className="text-right tabular-nums text-muted-foreground">
-                        {age}d
-                      </TD>
-                    </TR>
-                  );
-                })}
-              </TBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-    </main>
+      <TamDashboardScreen data={data} />
+    </div>
   );
 }

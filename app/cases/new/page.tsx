@@ -1,74 +1,98 @@
 // New service case (Rep persona #5 — open a case from inside an account).
-import { notFound } from "next/navigation";
-import Link from "next/link";
+// Now rendered through the canvas CaseNewScreen. Server-side data + the wired
+// createCase action stay here; the screen is pure presentation.
+
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { currentUser } from "@/lib/session";
 import { createCase } from "@/app/cases/actions";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { CaseNewScreen, type CaseNewScreenData } from "@/components/canvas/screens/CaseNewScreen";
+import type {
+  Account,
+  AccountStatus,
+  Contact,
+  DecisionRole,
+  CasePriority,
+} from "@/lib/canvas/types";
+import type { ContactRole, Priority } from "@prisma/client";
+
+export const dynamic = "force-dynamic";
+
+// ContactRole (Prisma) -> DecisionRole (canvas). OTHER -> INFLUENCER, rest 1:1.
+const DECISION_ROLE: Record<ContactRole, DecisionRole> = {
+  FINANCIAL: "FINANCIAL",
+  BUDGET: "BUDGET",
+  TECH: "TECH",
+  INFLUENCER: "INFLUENCER",
+  OTHER: "INFLUENCER",
+};
+
+// CasePriority (canvas, what the screen's <Select> emits) -> Priority (Prisma,
+// what createCase expects). Keeps the create form fully wired despite the enum
+// mismatch between the canvas screen and our data model.
+const PRIORITY_TO_PRISMA: Record<CasePriority, Priority> = {
+  P1: "CRITICAL",
+  P2: "HIGH",
+  P3: "MEDIUM",
+  P4: "LOW",
+};
 
 export default async function NewCasePage({
   searchParams,
 }: {
   searchParams: Promise<{ accountId?: string }>;
 }) {
+  const user = await currentUser();
+  if (!user) redirect("/role-switch");
+
   const { accountId } = await searchParams;
-  if (!accountId) notFound();
-  const [account, services] = await Promise.all([
-    prisma.account.findUnique({ where: { id: accountId }, include: { assignedTam: true } }),
+
+  const [accounts, contacts, services] = await Promise.all([
+    prisma.account.findMany({ orderBy: { name: "asc" } }),
+    prisma.contact.findMany({
+      where: accountId ? { accountId } : undefined,
+      orderBy: { name: "asc" },
+    }),
     prisma.service.findMany({ where: { status: "ACTIVE" }, orderBy: { name: "asc" } }),
   ]);
-  if (!account) notFound();
 
-  const inputCls = "w-full rounded-md border border-input bg-background px-3 py-2 text-sm";
+  // createCase reads formData directly. We adapt the canvas-enum priority back to
+  // our Prisma enum, then delegate to the unchanged server action.
+  async function adaptCreate(fd: FormData) {
+    "use server";
+    const canvasPriority = String(fd.get("priority") ?? "P3") as CasePriority;
+    fd.set("priority", PRIORITY_TO_PRISMA[canvasPriority] ?? "MEDIUM");
+    await createCase(fd);
+  }
 
-  return (
-    <main className="mx-auto max-w-2xl px-4 py-8">
-      <Link href={`/accounts/${account.id}`} className="text-sm text-muted-foreground hover:underline">
-        ← {account.name}
-      </Link>
-      <h1 className="mt-1 mb-6 text-2xl font-semibold">Open a service case</h1>
-      <form action={createCase}>
-        <input type="hidden" name="accountId" value={account.id} />
-        <Card>
-          <CardHeader><CardTitle>New case · {account.name}</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <label className="text-sm font-medium">Title</label>
-              <input name="title" required placeholder="e.g. Devices failing MDM check-in" className={inputCls} />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Description</label>
-              <textarea name="description" rows={3} placeholder="What's happening?" className={inputCls} />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className="text-sm font-medium">Priority</label>
-                <select name="priority" defaultValue="MEDIUM" className={inputCls}>
-                  <option value="LOW">Low</option>
-                  <option value="MEDIUM">Medium</option>
-                  <option value="HIGH">High</option>
-                  <option value="CRITICAL">Critical</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Linked service</label>
-                <select name="serviceId" defaultValue="" className={inputCls}>
-                  <option value="">— none —</option>
-                  {services.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Will be assigned to {account.assignedTam?.name ?? "the account TAM"} with an SLA due date from priority.
-            </p>
-            <div className="flex justify-end">
-              <Button type="submit">Open case</Button>
-            </div>
-          </CardContent>
-        </Card>
-      </form>
-    </main>
-  );
+  const data: CaseNewScreenData = {
+    accounts: accounts.map((a): Account => ({
+      id: a.id,
+      name: a.name,
+      domain: a.domain ?? undefined,
+      address: a.address ?? undefined,
+      vatId: a.vatId ?? undefined,
+      region: a.region,
+      segment: a.segment,
+      industry: a.industry,
+      status: a.status as AccountStatus,
+      ownerId: a.ownerRepId,
+      tamId: a.assignedTamId ?? undefined,
+    })),
+    contacts: contacts.map((c): Contact => ({
+      id: c.id,
+      accountId: c.accountId,
+      name: c.name,
+      title: c.title ?? undefined,
+      decisionRole: c.decisionRole ? DECISION_ROLE[c.decisionRole] : undefined,
+      email: c.email ?? undefined,
+      phone: c.phone ?? undefined,
+      isPrimary: c.isPrimary,
+    })),
+    services: services.map((s) => ({ id: s.id, name: s.name })),
+    defaults: { accountId: accountId ?? undefined },
+    createAction: adaptCreate,
+  };
+
+  return <CaseNewScreen data={data} />;
 }

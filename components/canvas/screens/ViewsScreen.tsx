@@ -31,7 +31,7 @@ export function ViewsScreen({ data }: { data: ViewsScreenData }) {
 
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
         {data.views.map((v) => (
-          <Link key={v.id} href={`/${v.entity}?view=${v.id}`}>
+          <Link key={v.id} href={`/views?view=${v.id}`}>
             <GlassCard className="transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-elegant">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2"><Eye className="h-4 w-4 text-primary-glow" /><span className="font-medium">{v.name}</span></div>
