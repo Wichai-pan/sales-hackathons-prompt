@@ -13,6 +13,8 @@ export interface CaseDetailScreenData {
   notes: { id: string; body: string; visibility: "INTERNAL" | "WORKING"; authorName: string; createdAt: string }[];
   assignees: { id: string; name: string }[];
   aiSummary?: string;
+  /** Account service-history timeline; `onThisCase` highlights events for this case. */
+  activity?: { summary: string; actorName?: string; createdAt: string; onThisCase?: boolean }[];
   addNoteAction?: ServerAction;
   changeStatusAction?: ServerAction;
   closeAction?: ServerAction;
@@ -23,7 +25,8 @@ export interface CaseDetailScreenData {
 const priorityTone: Record<CasePriority, "destructive" | "warning" | "info" | "default"> = {
   P1: "destructive", P2: "warning", P3: "info", P4: "default",
 };
-const statuses: CaseStatus[] = ["OPEN", "IN_PROGRESS", "WAITING", "RESOLVED", "CLOSED"];
+// Map 1:1 to our Prisma case statuses (WAITING == ESCALATED on the backend).
+const statuses: CaseStatus[] = ["OPEN", "IN_PROGRESS", "WAITING", "CLOSED"];
 
 export function CaseDetailScreen({ data }: { data: CaseDetailScreenData }) {
   const c = data.case;
@@ -125,6 +128,25 @@ export function CaseDetailScreen({ data }: { data: CaseDetailScreenData }) {
               <div className="flex justify-between"><dt className="text-muted-foreground">Owner</dt><dd>{c.ownerName ?? "—"}</dd></div>
             </dl>
           </GlassCard>
+
+          {data.activity && data.activity.length > 0 && (
+            <GlassCard className="p-0">
+              <div className="border-b border-border px-5 py-3 font-medium text-sm">Service history</div>
+              <ul className="max-h-72 divide-y divide-border overflow-y-auto">
+                {data.activity.map((a, i) => (
+                  <li key={i} className={`px-5 py-2.5 text-sm ${a.onThisCase ? "" : "opacity-70"}`}>
+                    <div className="flex items-start gap-2">
+                      <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${a.onThisCase ? "bg-primary" : "bg-muted-foreground/40"}`} />
+                      <div>
+                        <div>{a.summary}</div>
+                        <div className="text-xs text-muted-foreground">{a.actorName ? a.actorName + " · " : ""}{new Date(a.createdAt).toLocaleDateString()}</div>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </GlassCard>
+          )}
         </div>
       </div>
     </div>
