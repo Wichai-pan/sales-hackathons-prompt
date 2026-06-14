@@ -1,18 +1,21 @@
-import { Send, Sparkles, ShieldCheck, Check, Clock } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, Send, Sparkles, ShieldCheck, Check, Clock } from "lucide-react";
 import { Badge } from "@/components/canvas/ui/badge";
 import { GlassCard } from "@/components/canvas/primitives";
 import { Button } from "@/components/canvas/ui/button";
 import type { Offer, OfferLineItem, Approval, OfferStatus, ServerAction } from "@/lib/canvas/types";
 import { fmt, fmtDate } from "@/lib/canvas/format";
-import { noopAction } from "@/lib/canvas/types";
 
 export interface OfferDetailScreenData {
   offer: Offer & { heroTagline?: string };
   lineItems: OfferLineItem[];
   approvals: Approval[];
-  /** Form action to send the offer as web page (POST). */
+  /** Back navigation (e.g. to the account). */
+  backHref?: string;
+  backLabel?: string;
+  /** Form action to send the offer as web page (POST). Button hidden when absent. */
   sendAction?: ServerAction;
-  /** Form action for accept signature (POST). */
+  /** Form action for accept signature (POST). Form hidden when absent. */
   acceptAction?: ServerAction;
 }
 
@@ -25,6 +28,11 @@ export function OfferDetailScreen({ data }: { data: OfferDetailScreenData }) {
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
+      {data.backHref && (
+        <Link href={data.backHref} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="h-3 w-3" /> {data.backLabel ?? "Back"}
+        </Link>
+      )}
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="text-xs text-muted-foreground">Offer · {o.id} · v{o.version}</div>
@@ -35,12 +43,14 @@ export function OfferDetailScreen({ data }: { data: OfferDetailScreenData }) {
         </div>
         <div className="flex items-center gap-2">
           <Badge variant={o.status === "APPROVED" ? "success" : o.status === "REJECTED" ? "destructive" : "warning"}>
-            {o.status.replace("_", " ")}
+            {o.status.replace(/_/g, " ")}
           </Badge>
           {o.locked && <Badge variant="outline">Locked</Badge>}
-          <form action={data.sendAction ?? noopAction}>
-            <Button type="submit" size="sm"><Send className="h-3.5 w-3.5" /> Send as web page</Button>
-          </form>
+          {data.sendAction && (
+            <form action={data.sendAction}>
+              <Button type="submit" size="sm"><Send className="h-3.5 w-3.5" /> Send as web page</Button>
+            </form>
+          )}
         </div>
       </div>
 
@@ -116,16 +126,18 @@ export function OfferDetailScreen({ data }: { data: OfferDetailScreenData }) {
                 )}
               </section>
 
-              <form action={data.acceptAction ?? noopAction} className="rounded-xl border border-primary/30 bg-accent/20 p-5">
-                <div className="text-sm font-medium">Accept and sign</div>
-                <p className="mt-1 text-xs text-muted-foreground">A signed PDF will be sent to {o.accountName} and HMD Secure.</p>
-                <div className="mt-4 flex items-end gap-3">
-                  <label className="flex-1">
-                    <input name="signature" required placeholder="Type your full name to sign" className="h-12 w-full rounded-lg border-2 border-dashed border-border bg-background/60 px-4 text-center text-sm focus:border-primary focus:outline-none" />
-                  </label>
-                  <Button type="submit" size="lg">Accept proposal</Button>
-                </div>
-              </form>
+              {data.acceptAction && (
+                <form action={data.acceptAction} className="rounded-xl border border-primary/30 bg-accent/20 p-5">
+                  <div className="text-sm font-medium">Accept and sign</div>
+                  <p className="mt-1 text-xs text-muted-foreground">A signed PDF will be sent to {o.accountName} and HMD Secure.</p>
+                  <div className="mt-4 flex items-end gap-3">
+                    <label className="flex-1">
+                      <input name="signature" required placeholder="Type your full name to sign" className="h-12 w-full rounded-lg border-2 border-dashed border-border bg-background/60 px-4 text-center text-sm focus:border-primary focus:outline-none" />
+                    </label>
+                    <Button type="submit" size="lg">Accept proposal</Button>
+                  </div>
+                </form>
+              )}
             </div>
           </div>
         </div>
