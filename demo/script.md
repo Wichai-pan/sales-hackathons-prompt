@@ -3,7 +3,7 @@
 > 3-minute demo. Target runtime **2:45** (15s buffer). Source narrative = `memory/pitch-spec.md` — do not invent new story.
 > Open on the PRODUCT, not a slide. No live typing of commands; no terminal.
 
-- **Live URL:** http://43.165.2.182:3000 (Frankfurt / EU). Demo from the live URL, never localhost.
+- **Live URL:** http://wichai.xyz:3000 (Frankfurt / EU). Demo from the live URL, never localhost.
 - **Presenter / driver:** Owner.
 - **Demo users (role-switch):** Sofia Rep · Mira Sales Manager · Fiona Finance · Timo TAM.
 - **One-line positioning:** "HMD Secure's first shared source of truth — accounts, service, offers, approvals, a 3-year weighted forecast — with AI as the analyst layer on top."

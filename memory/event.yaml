@@ -7,7 +7,7 @@ event:
   submission_url: "https://prompthack.aaltoes.com/sales-2026"
   submission_method: "EMAIL to anssi.ronnemaa@hmdglobal.com + janne.lehtosalo@hmdglobal.com (auto-CC meri.heikkinen@aaltoes.com, olivia.ronnemaa@aaltoes.com). Include repo + deployed URL + demo video. Pick challenge on team page first."
   demo_minutes: 3
-  live_url: "http://43.165.2.182:3000"
+  live_url: "http://wichai.xyz:3000"
 tracks:
   - name: "HMD"
     prizes: "€1,000 cash"

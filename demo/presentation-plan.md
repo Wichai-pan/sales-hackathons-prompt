@@ -2,7 +2,7 @@
 
 > 配套文件：逐镜脚本 `demo/script.md`、录制清单 `demo/recording-checklist.md`、功能测试 `demo/manual-test-plan.md`。
 > 本文 = 演示**策略 + 讲解词 + slide 提纲 + 评委问答准备**。
-> **时长目标 3 分钟**（演示 2:45 + 缓冲）。**线上**：http://43.165.2.182:3000
+> **时长目标 3 分钟**（演示 2:45 + 缓冲）。**线上**：http://wichai.xyz:3000
 
 ## 0. 一句话定位（开场 & 收尾都用）
 > "我们给 HMD Secure 做了**第一个统一真相源**——账户、服务历史、报价、审批、3 年加权预测——并让 **AI 作为分析师层**叠加其上。不是把 AI 当数据库的聊天机器人，而是一个 AI 让人**少录数据、多做判断**的真 CRM。"
@@ -65,7 +65,7 @@
 
 ## 9. 提交（截止周日 15:00 Helsinki = 2026-06-14T12:00Z）
 - [ ] 邮件给 **anssi.ronnemaa@hmdglobal.com + janne.lehtosalo@hmdglobal.com**（自动抄送组织方），含：
-  - 线上 URL：http://43.165.2.182:3000
+  - 线上 URL：http://wichai.xyz:3000
   - 仓库：https://github.com/Wichai-pan/sales-hackathons-prompt
   - demo 视频（文件/链接）
 - [ ] 如需先在团队页选 HMD 挑战，先选。平台访问码：**SALES2026**。

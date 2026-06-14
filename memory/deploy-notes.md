@@ -14,7 +14,7 @@
 ## Constraints for docker-compose.yml (V — bake these in)
 
 - **Project isolation**: set an explicit `name: hmd-crm` (compose project name) so our network/volumes are namespaced (`hmd-crm_default`), never colliding with `jl_*`.
-- **App port**: map Next.js to host **3000** → access demo at `http://43.165.2.182:3000`. Do NOT use 80.
+- **App port**: map Next.js to host **3000** → access demo at `http://wichai.xyz:3000`. Do NOT use 80.
 - **Postgres**: keep it INTERNAL to the compose network — either don't map it to the host at all, or map to **5432** (free) only if local tooling needs it. Never expose it publicly without a password. Use a strong `POSTGRES_PASSWORD`.
 - **Memory**: prefer Next.js `output: 'standalone'` + a production build (not `next dev`) for the deployed demo, to keep RAM low. Building on the server risks OOM on 0.5Gi free — mitigations: build with `NODE_OPTIONS=--max-old-space-size=1024`, or build the image locally and push, or Owner adds temporary swap before `compose up --build`.
 - Postgres image: use a slim tag (e.g., `postgres:16-alpine`).
@@ -25,10 +25,10 @@
 ssh frankfurt
 cd /opt/hmd-crm
 git clone https://github.com/Wichai-pan/sales-hackathons-prompt.git . # or git pull
-cp .env.example .env   # fill DATABASE_URL (internal), AUTH_SECRET, APP_URL=http://43.165.2.182:3000, DEMO_MODE=true,
+cp .env.example .env   # fill DATABASE_URL (internal), AUTH_SECRET, APP_URL=http://wichai.xyz:3000, DEMO_MODE=true,
                        # FEATHERLESS_API_KEY=<team key>, FEATHERLESS_MODEL=Qwen/Qwen2.5-7B-Instruct (NOT Azure)
 docker compose up -d --build   # if OOM: add swap first, or build locally
-# verify: curl localhost:3000 ; demo at http://43.165.2.182:3000
+# verify: curl localhost:3000 ; demo at http://wichai.xyz:3000
 ```
 
 ## TODO / risks

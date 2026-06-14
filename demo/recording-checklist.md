@@ -1,6 +1,6 @@
 # Recording Checklist — HMD Secure CRM demo
 
-Target final length **2:45** (3:00 cap − 15s buffer). Record from the LIVE URL: http://43.165.2.182:3000
+Target final length **2:45** (3:00 cap − 15s buffer). Record from the LIVE URL: http://wichai.xyz:3000
 
 ## Before you hit record
 - [ ] **Fresh seed**: if the live data is dirty from testing, redeploy once (`ssh frankfurt 'cd /opt/hmd-crm && git pull && docker compose up -d --build'`) — then DO NOT redeploy again (it re-seeds and wipes anything you create on camera).
@@ -28,5 +28,5 @@ Target final length **2:45** (3:00 cap − 15s buffer). Record from the LIVE URL
 
 ## Submission (do at T-3h via hackathon-closer)
 - [ ] Email to: anssi.ronnemaa@hmdglobal.com, janne.lehtosalo@hmdglobal.com (auto-CC organizers) BY Sun 15:00 Helsinki.
-- [ ] Include: live URL http://43.165.2.182:3000 · repo https://github.com/Wichai-pan/sales-hackathons-prompt · demo video.
+- [ ] Include: live URL http://wichai.xyz:3000 · repo https://github.com/Wichai-pan/sales-hackathons-prompt · demo video.
 - [ ] Pick the HMD challenge on the team page first if required.
