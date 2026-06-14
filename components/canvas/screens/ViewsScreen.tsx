@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Eye, Plus } from "lucide-react";
+import { Eye } from "lucide-react";
 import { GlassCard, SectionHeader } from "@/components/canvas/primitives";
 import { Badge } from "@/components/canvas/ui/badge";
 
@@ -22,11 +22,6 @@ export function ViewsScreen({ data }: { data: ViewsScreenData }) {
       <SectionHeader
         title="Saved views"
         subtitle="Filtered lists you can share with the team"
-        action={
-          <Link href="/views/new" className="inline-flex items-center gap-1.5 rounded-lg ai-gradient px-3 py-1.5 text-xs font-medium text-white">
-            <Plus className="h-3.5 w-3.5" /> New view
-          </Link>
-        }
       />
 
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">

@@ -38,7 +38,7 @@ export function TamDashboardScreen({ data }: { data: TamDashboardData }) {
                   <span className="text-xs text-muted-foreground tnum">{g.cases.length} open</span>
                 </div>
                 <div className="mt-2 space-y-1.5">
-                  {g.cases.slice(0, 4).map((c) => (
+                  {g.cases.map((c) => (
                     <Link key={c.id} href={`/cases/${c.id}`} className="block rounded-md px-2 py-1 text-sm hover:bg-secondary/40">
                       <span className="font-medium">{c.title}</span>
                       <span className="ml-2 text-xs text-muted-foreground">{c.accountName}</span>

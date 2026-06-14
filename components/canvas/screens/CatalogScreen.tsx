@@ -44,7 +44,7 @@ export function CatalogScreen({ data }: { data: CatalogScreenData }) {
                 <td className="px-4 py-2.5 tnum">{p.gmPercent.toFixed(1)}%</td>
                 <td className="px-4 py-2.5"><Badge variant={p.status === "ACTIVE" ? "success" : "default"}>{p.status}</Badge></td>
                 <td className="px-5 py-2.5 text-right">
-                  <a href={`/catalog/products/${p.id}`} className="text-xs text-muted-foreground hover:text-foreground">Edit</a>
+                  <span className="text-xs text-muted-foreground">Manage below</span>
                 </td>
               </tr>
             ))}
@@ -86,7 +86,7 @@ export function CatalogScreen({ data }: { data: CatalogScreenData }) {
                 <td className="px-4 py-2.5 tnum">{s.gmPercent.toFixed(1)}%</td>
                 <td className="px-4 py-2.5"><Badge variant={s.status === "ACTIVE" ? "success" : "default"}>{s.status}</Badge></td>
                 <td className="px-5 py-2.5 text-right">
-                  <a href={`/catalog/services/${s.id}`} className="text-xs text-muted-foreground hover:text-foreground">Edit</a>
+                  <span className="text-xs text-muted-foreground">Manage below</span>
                 </td>
               </tr>
             ))}

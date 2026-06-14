@@ -193,4 +193,5 @@ export interface ActivityEvent {
 
 /** Server-action signature used by every form prop. */
 export type ServerAction = (formData: FormData) => void | Promise<void>;
-export const noopAction: ServerAction = () => {};
+// Real "use server" no-op (a plain function as a form action crashes the page). See ./noop.
+export { noopAction } from "./noop";

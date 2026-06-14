@@ -29,8 +29,8 @@ export function CaseDetailScreen({ data }: { data: CaseDetailScreenData }) {
   const c = data.case;
   return (
     <div className="p-6 lg:p-8 space-y-6">
-      <Link href="/cases" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="h-3 w-3" /> All cases
+      <Link href="/tam" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+        <ArrowLeft className="h-3 w-3" /> My cases
       </Link>
 
       <div className="flex items-start justify-between gap-4">

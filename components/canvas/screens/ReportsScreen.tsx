@@ -26,8 +26,7 @@ export function ReportsScreen({ data }: { data: ReportsScreenData }) {
               {r.description && <div className="mt-1 text-xs text-muted-foreground">{r.description}</div>}
             </div>
             {r.trend && r.trend.length > 1 && <SparkLine data={r.trend} className="self-start" />}
-            <div className="mt-auto flex items-center justify-between">
-              <a href={`/reports/${r.id}`} className="text-xs text-muted-foreground hover:text-foreground">View →</a>
+            <div className="mt-auto flex items-center justify-end">
               {r.exportHref && (
                 <a href={r.exportHref} className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs hover:bg-secondary">
                   <Download className="h-3 w-3" /> CSV
