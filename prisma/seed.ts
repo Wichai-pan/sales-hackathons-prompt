@@ -184,6 +184,18 @@ async function main() {
       contacts: [{ name: "Freja Nilsson", title: "Store Tech Manager", email: "freja.nilsson@nordicretail.example", primary: true }] },
     { name: "Helvetia Secure Bank", region: "Central Europe", segment: "Enterprise", industry: "Finance", owner: raj.id, tam: timo.id,
       contacts: [{ name: "Daniel Frei", title: "Head of Endpoint Security", email: "daniel.frei@helvetiabank.example", primary: true }] },
+    { name: "Helsinki Transit Authority", region: "Finland", segment: "Public Sector", industry: "Transportation", owner: sofia.id, tam: timo.id,
+      contacts: [{ name: "Mikael Virtanen", title: "Fleet IT Lead", email: "mikael.virtanen@hsltransit.example", primary: true }] },
+    { name: "Iberia Logistics Group", region: "Iberia", segment: "Mid-market", industry: "Logistics", owner: raj.id, tam: lena.id,
+      contacts: [{ name: "Sofia Marquez", title: "Procurement Manager", email: "sofia.marquez@iberialog.example", primary: true }] },
+    { name: "Benelux MedTech", region: "Benelux", segment: "Enterprise", industry: "Healthcare", owner: sofia.id, tam: timo.id,
+      contacts: [{ name: "Lars Janssen", title: "CISO", email: "lars.janssen@beneluxmed.example", primary: true }, { name: "Marie Dubois", title: "Head of Procurement", email: "marie.dubois@beneluxmed.example" }] },
+    { name: "DACH Automotive Parts", region: "DACH", segment: "Enterprise", industry: "Automotive", owner: raj.id, tam: lena.id,
+      contacts: [{ name: "Thomas Bauer", title: "IT Procurement Lead", email: "thomas.bauer@dachauto.example", primary: true }] },
+    { name: "Polar Energy Networks", region: "Nordics", segment: "Enterprise", industry: "Energy", owner: raj.id, tam: timo.id,
+      contacts: [{ name: "Ingrid Halvorsen", title: "Head of Field Operations", email: "ingrid.halvorsen@polarenergy.example", primary: true }] },
+    { name: "Adriatic Telecom", region: "Central Europe", segment: "Mid-market", industry: "Telecom", owner: sofia.id, tam: lena.id,
+      contacts: [{ name: "Marko Petrovic", title: "Network IT Manager", email: "marko.petrovic@adriatictel.example", primary: true }] },
   ];
 
   // HMD asked for customer basics (domain/address/VAT) + a contact decision-role.
@@ -247,6 +259,18 @@ async function main() {
     { account: "Helvetia Secure Bank", name: "Helvetia executive fleet", channel: "DIRECT", stage: "RFP_OFFER_GIVEN", closeInDays: -5, lastActivityDaysAgo: 16, forecast: { devicesYr1: 200, devicePrice: 899, monthlyServicePerDevice: 14 } }, // PAST CLOSE + STALLED
     { account: "NordSec Logistics", name: "NordSec accessory framework", channel: "DIRECT", stage: "INTEREST_SHOWN", closeInDays: 130, lastActivityDaysAgo: 3 },
     { account: "FinGov Mobility", name: "FinGov disaster-recovery kit", channel: "DIRECT", stage: "RFI_ANSWERED", closeInDays: 90, lastActivityDaysAgo: 4, forecast: { devicesYr1: 250, devicePrice: 449, monthlyServicePerDevice: 9 } },
+    { account: "Helsinki Transit Authority", name: "Helsinki bus fleet tablets", channel: "DIRECT", stage: "CUSTOMER_TEST", closeInDays: 50, lastActivityDaysAgo: 4, forecast: { devicesYr1: 800, devicePrice: 629, monthlyServicePerDevice: 9 } },
+    { account: "Helsinki Transit Authority", name: "Helsinki metro rollout", channel: "DIRECT", stage: "RFI_ANSWERED", closeInDays: 120, lastActivityDaysAgo: 9, forecast: { devicesYr1: 1500, devicePrice: 749, monthlyServicePerDevice: 9 } },
+    { account: "Iberia Logistics Group", name: "Iberia warehouse scanners", channel: "RESELLER", stage: "RFP_OFFER_GIVEN", closeInDays: 70, lastActivityDaysAgo: 5, forecast: { devicesYr1: 600, devicePrice: 449, monthlyServicePerDevice: 9 } },
+    { account: "Benelux MedTech", name: "Benelux clinical devices", channel: "DIRECT", stage: "CONTRACT_NEGOTIATION", closeInDays: 28, lastActivityDaysAgo: 2, forecast: { devicesYr1: 1000, devicePrice: 629, monthlyServicePerDevice: 14 } },
+    { account: "Benelux MedTech", name: "Benelux compliance bundle", channel: "DIRECT", stage: "INTEREST_SHOWN", closeInDays: 140, lastActivityDaysAgo: 24 }, // STALLED
+    { account: "DACH Automotive Parts", name: "DACH plant floor rugged", channel: "RESELLER", stage: "CUSTOMER_TEST", closeInDays: 45, lastActivityDaysAgo: 6, forecast: { devicesYr1: 900, devicePrice: 899, monthlyServicePerDevice: 9 } },
+    { account: "DACH Automotive Parts", name: "DACH logistics expansion", channel: "RESELLER", stage: "INTEREST_SHOWN", closeInDays: 110, lastActivityDaysAgo: 28 }, // STALLED (DACH enterprise -> smart view)
+    { account: "Polar Energy Networks", name: "Polar grid field devices", channel: "DIRECT", stage: "RFP_OFFER_GIVEN", closeInDays: 60, lastActivityDaysAgo: 7, forecast: { devicesYr1: 700, devicePrice: 899, monthlyServicePerDevice: 14 } },
+    { account: "Polar Energy Networks", name: "Polar offshore pilot", channel: "DIRECT", stage: "WON", closeInDays: -15, lastActivityDaysAgo: 20, status: "WON", forecast: { devicesYr1: 200, devicePrice: 899, monthlyServicePerDevice: 14 } },
+    { account: "Adriatic Telecom", name: "Adriatic field tech tablets", channel: "RESELLER", stage: "CUSTOMER_TEST", closeInDays: 40, lastActivityDaysAgo: 5, forecast: { devicesYr1: 500, devicePrice: 449, monthlyServicePerDevice: 9 } },
+    { account: "Helvetia Secure Bank", name: "Helvetia compliance tablets", channel: "DIRECT", stage: "RFI_ANSWERED", closeInDays: 95, lastActivityDaysAgo: 8, forecast: { devicesYr1: 400, devicePrice: 749, monthlyServicePerDevice: 14 } },
+    { account: "Aurora Health Systems", name: "Aurora pharmacy handhelds", channel: "DIRECT", stage: "RFP_OFFER_GIVEN", closeInDays: 55, lastActivityDaysAgo: 6, forecast: { devicesYr1: 350, devicePrice: 629, monthlyServicePerDevice: 9 } },
   ];
 
   const deals: { deal: Deal; spec: DealSpec; accountId: string }[] = [];
@@ -319,6 +343,12 @@ async function main() {
     { account: "Helvetia Secure Bank", service: "Compliance Audit Package", tam: timo.id, title: "Quarterly compliance review", description: "Routine compliance review.", status: "CLOSED", priority: "LOW", ageDays: 30, closedDaysAgo: 4 },
     { account: "RheinWerk Manufacturing", service: "Secure Device Management", tam: lena.id, title: "Warehouse Wi-Fi handoff drops", description: "Devices drop between APs.", status: "CLOSED", priority: "MEDIUM", ageDays: 22, closedDaysAgo: 6 },
     { account: "FinGov Mobility", service: "MDM Integration Support", tam: timo.id, title: "SSO token expiry too aggressive", description: "Users re-auth too often.", status: "OPEN", priority: "MEDIUM", ageDays: 10 },
+    { account: "Helsinki Transit Authority", service: "Deployment Workshop", tam: timo.id, title: "Driver tablets won't pair with ticketing", description: "Pairing fails on the ticketing dock.", status: "OPEN", priority: "HIGH", ageDays: 4 },
+    { account: "Iberia Logistics Group", service: "MDM Integration Support", tam: lena.id, title: "Scanner sync delays in warehouse", description: "Inventory sync lags by minutes.", status: "IN_PROGRESS", priority: "MEDIUM", ageDays: 7 },
+    { account: "Benelux MedTech", service: "Compliance Audit Package", tam: timo.id, title: "Audit log gap on clinical devices", description: "Missing entries fail the compliance review.", status: "ESCALATED", priority: "CRITICAL", ageDays: 3 },
+    { account: "DACH Automotive Parts", service: "Secure Device Management", tam: lena.id, title: "Rugged units fail drop-test recert", description: "Recertification batch failing.", status: "OPEN", priority: "MEDIUM", ageDays: 9 },
+    { account: "Polar Energy Networks", service: "Third-party Incident Response", tam: timo.id, title: "Phishing on 2 field accounts", description: "Credential phishing under investigation.", status: "ESCALATED", priority: "HIGH", ageDays: 2 },
+    { account: "Adriatic Telecom", service: "24/7 Premium Support", tam: lena.id, title: "VPN drops on 4G handoff", description: "Daily VPN drops on cellular handoff.", status: "OPEN", priority: "MEDIUM", ageDays: 6 },
   ];
   // SLA window in days by priority (mirrors lib/sla.ts SLA_DAYS) — P2 #18.
   const SLA_DAYS: Record<string, number> = { CRITICAL: 2, HIGH: 4, MEDIUM: 8, LOW: 15 };

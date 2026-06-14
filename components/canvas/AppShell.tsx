@@ -69,7 +69,12 @@ export function AppShell({ role, user, nav, unreadCount = 0, children }: AppShel
           collapsed ? "w-[68px]" : "w-[232px]"
         )}
       >
-        <div className="flex h-14 items-center gap-2 px-4">
+        <Link
+          href={items[0]?.href ?? "/"}
+          className="flex h-14 items-center gap-2 px-4 transition-opacity hover:opacity-80"
+          aria-label="回到主页"
+          title="回到主页"
+        >
           <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg ai-gradient shadow-elegant">
             <ShieldCheck className="h-4 w-4 text-white" />
           </div>
@@ -79,7 +84,7 @@ export function AppShell({ role, user, nav, unreadCount = 0, children }: AppShel
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground">CRM · EU Sovereign</div>
             </div>
           )}
-        </div>
+        </Link>
         <nav className="flex flex-col gap-0.5 px-2 py-2">
           {items.map((it) => {
             const Icon = iconMap[it.icon];
