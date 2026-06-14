@@ -13,6 +13,8 @@ export interface OfferDetailScreenData {
   /** Back navigation (e.g. to the account). */
   backHref?: string;
   backLabel?: string;
+  /** Form action to submit a DRAFT offer into the approval chain. Shown when present (DRAFT only). */
+  submitAction?: ServerAction;
   /** Form action to send the offer as web page (POST). Button hidden when absent. */
   sendAction?: ServerAction;
   /** Form action for accept signature (POST). Form hidden when absent. */
@@ -46,6 +48,11 @@ export function OfferDetailScreen({ data }: { data: OfferDetailScreenData }) {
             {o.status.replace(/_/g, " ")}
           </Badge>
           {o.locked && <Badge variant="outline">Locked</Badge>}
+          {data.submitAction && (
+            <form action={data.submitAction}>
+              <Button type="submit" size="sm"><Check className="h-3.5 w-3.5" /> Submit for approval</Button>
+            </form>
+          )}
           {data.sendAction && (
             <form action={data.sendAction}>
               <Button type="submit" size="sm"><Send className="h-3.5 w-3.5" /> Send as web page</Button>

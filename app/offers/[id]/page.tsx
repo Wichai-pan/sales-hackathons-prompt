@@ -3,8 +3,9 @@
 // approval-history timeline. Approve/Reject controls live in the SM/Finance queues (/approvals);
 // the screen's optional send/accept forms are intentionally not wired (no broken placeholders).
 
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { submitForApproval } from "@/lib/approval";
 import { OfferDetailScreen, type OfferDetailScreenData } from "@/components/canvas/screens/OfferDetailScreen";
 import type {
   Offer as CanvasOffer,
@@ -27,6 +28,14 @@ export default async function OfferPage({ params }: { params: Promise<{ id: stri
     },
   });
   if (!offer) notFound();
+
+  // A DRAFT offer can be submitted into the approval chain straight from this page
+  // (no discount -> auto-approved; discount -> PENDING_SM + locked + SM notified).
+  async function submitAction() {
+    "use server";
+    await submitForApproval(id);
+    redirect(`/offers/${id}`);
+  }
 
   const data: OfferDetailScreenData = {
     offer: {
@@ -64,6 +73,7 @@ export default async function OfferPage({ params }: { params: Promise<{ id: stri
     })),
     backHref: `/accounts/${offer.accountId}`,
     backLabel: offer.account.name,
+    submitAction: offer.status === "DRAFT" ? submitAction : undefined,
   };
 
   return <OfferDetailScreen data={data} />;
