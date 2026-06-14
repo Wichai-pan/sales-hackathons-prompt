@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { Mail, Sparkles, Wand2, ArrowRight, Clock } from "lucide-react";
 import { AIChip, Avatar, GlassCard, KpiTile, SectionHeader, type KpiTileProps } from "@/components/canvas/primitives";
@@ -26,6 +27,9 @@ export interface RepDashboardData {
   offersInApproval: Offer[];
   recentActivity: ActivityEvent[];
   cases?: Case[];
+  /** Drop-in node that replaces the built-in parse form — used to mount the real
+   *  <IntakePanel/> hero (email → AI draft → Apply selected). */
+  intakeSlot?: ReactNode;
   /** Server action receiving FormData with field `email` (the raw inbound email). */
   parseEmailAction?: ServerAction;
   /** Server action to create a deal+contact from parsed draft. */
@@ -51,42 +55,48 @@ export function RepDashboardScreen({ data }: { data: RepDashboardData }) {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-        {/* AI intake — paste email → draft */}
-        <GlassCard className="overflow-hidden p-0">
-          <div className="flex items-center justify-between border-b border-border bg-gradient-to-r from-accent/40 to-transparent px-5 py-4">
-            <div className="flex items-center gap-2">
-              <div className="grid h-8 w-8 place-items-center rounded-lg ai-gradient"><Wand2 className="h-4 w-4 text-white" /></div>
-              <div>
-                <div className="font-display text-sm font-semibold">AI-assisted intake</div>
-                <div className="text-xs text-muted-foreground">Paste an inbound email → structured deal in seconds</div>
+        {/* AI intake — real <IntakePanel/> hero when a slot is provided; otherwise the
+            built-in parse-only form. */}
+        {data.intakeSlot ?? (
+          <GlassCard className="overflow-hidden p-0">
+            <div className="flex items-center justify-between border-b border-border bg-gradient-to-r from-accent/40 to-transparent px-5 py-4">
+              <div className="flex items-center gap-2">
+                <div className="grid h-8 w-8 place-items-center rounded-lg ai-gradient"><Wand2 className="h-4 w-4 text-white" /></div>
+                <div>
+                  <div className="font-display text-sm font-semibold">AI-assisted intake</div>
+                  <div className="text-xs text-muted-foreground">Paste an inbound email → structured deal in seconds</div>
+                </div>
               </div>
+              <AIChip>grounded</AIChip>
             </div>
-            <AIChip>grounded</AIChip>
-          </div>
-          <form action={data.parseEmailAction ?? noopAction} className="p-5">
-            <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground"><Mail className="h-3 w-3" /> Inbound email</div>
-            <textarea
-              name="email"
-              rows={10}
-              placeholder="Paste an inbound email here…"
-              className="w-full resize-none rounded-lg border border-border bg-background/50 p-3 font-mono text-[12px] leading-relaxed text-foreground focus:border-primary focus:outline-none"
-            />
-            <button type="submit" className="mt-3 inline-flex items-center gap-2 rounded-lg border border-primary/40 bg-accent/60 px-3 py-1.5 text-xs font-medium ai-gradient-text">
-              <Sparkles className="h-3 w-3" /> Parse with AI
-            </button>
-          </form>
-        </GlassCard>
+            <form action={data.parseEmailAction ?? noopAction} className="p-5">
+              <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground"><Mail className="h-3 w-3" /> Inbound email</div>
+              <textarea
+                name="email"
+                rows={10}
+                placeholder="Paste an inbound email here…"
+                className="w-full resize-none rounded-lg border border-border bg-background/50 p-3 font-mono text-[12px] leading-relaxed text-foreground focus:border-primary focus:outline-none"
+              />
+              <button type="submit" className="mt-3 inline-flex items-center gap-2 rounded-lg border border-primary/40 bg-accent/60 px-3 py-1.5 text-xs font-medium ai-gradient-text">
+                <Sparkles className="h-3 w-3" /> Parse with AI
+              </button>
+            </form>
+          </GlassCard>
+        )}
 
         {/* Next best actions */}
         <GlassCard className="p-0">
           <div className="flex items-center justify-between border-b border-border px-5 py-4">
             <div>
               <div className="font-display text-sm font-semibold">Today's next best actions</div>
-              <div className="text-xs text-muted-foreground">Ranked by AI based on signal & deadlines</div>
+              <div className="text-xs text-muted-foreground">Ranked by signal &amp; deadlines</div>
             </div>
             <AIChip>{data.nextBestActions.length} new</AIChip>
           </div>
           <div className="divide-y divide-border">
+            {data.nextBestActions.length === 0 && (
+              <div className="px-5 py-6 text-xs text-muted-foreground">You're all caught up 🎉</div>
+            )}
             {data.nextBestActions.map((a) => (
               <div key={a.id} className="group flex items-start gap-3 px-5 py-3.5 hover:bg-secondary/40">
                 <div className={`mt-1 h-2 w-2 shrink-0 rounded-full ${a.urgency === "high" ? "bg-destructive" : a.urgency === "medium" ? "bg-warning" : "bg-info"}`} />
@@ -107,7 +117,7 @@ export function RepDashboardScreen({ data }: { data: RepDashboardData }) {
       <GlassCard className="p-0">
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <div className="font-display text-sm font-semibold">My accounts</div>
-          <Link href="/accounts" className="text-xs text-muted-foreground hover:text-foreground">View all →</Link>
+          <span className="text-xs text-muted-foreground">{data.myAccounts.length} total</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
