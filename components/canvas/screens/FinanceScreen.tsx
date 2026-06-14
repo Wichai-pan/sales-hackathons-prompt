@@ -48,8 +48,8 @@ export function FinanceScreen({ data }: { data: FinanceScreenData }) {
                 </Select>
               )}
             </form>
-            <a href="/api/finance/export/forecast.csv" className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs"><Download className="h-3.5 w-3.5" /> Export forecast CSV</a>
-            <a href="/api/finance/export/close-pack.csv" className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs"><Download className="h-3.5 w-3.5" /> Close pack CSV</a>
+            <a href="/api/export/forecast" className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs"><Download className="h-3.5 w-3.5" /> Export forecast CSV</a>
+            <a href="/api/export/cases" className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs"><Download className="h-3.5 w-3.5" /> Export cases CSV</a>
           </div>
         }
       />
