@@ -1,12 +1,16 @@
-// Finance dashboard (SLICE SA-V4) — now rendered through the canvas FinanceScreen.
-// Server-side data + role guard stay here; the screen is pure presentation.
+// Finance dashboard (SLICE SA-V4) — rendered through the canvas FinanceScreen.
+// Server-side data + role guard + owner/channel forecast filters stay here; the AI
+// pipeline-health narrative (P2 #23) is restored above the screen.
 
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { currentUser, dashboardPathForRole } from "@/lib/session";
 import { threeYearForecast } from "@/lib/reporting";
 import { daysSince } from "@/lib/utils";
 import { FinanceScreen, type FinanceScreenData } from "@/components/canvas/screens/FinanceScreen";
+import { ForecastNarrativeCard, ForecastNarrativeSkeleton } from "@/components/forecast-narrative-card";
+import type { Channel } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -25,13 +29,25 @@ function bucketAging(offers: { total: number; updatedAt: Date }[]) {
   return buckets.map((b) => ({ bucket: b.bucket, amount: Math.round(b.amount) }));
 }
 
-export default async function FinancePage() {
+function parseChannel(v: string | undefined): Channel | undefined {
+  return v === "DIRECT" || v === "RESELLER" ? v : undefined;
+}
+
+export default async function FinancePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ owner?: string; channel?: string }>;
+}) {
   const user = await currentUser();
   if (!user) redirect("/role-switch");
   if (user.role === "REP" || user.role === "TAM") redirect(dashboardPathForRole(user.role));
 
-  const [forecast, expiringDeals, approvedOffers] = await Promise.all([
-    threeYearForecast(),
+  const sp = await searchParams;
+  const channel = parseChannel(sp.channel);
+  const ownerRepId = sp.owner && sp.owner !== "all" ? sp.owner : undefined;
+
+  const [forecast, expiringDeals, approvedOffers, reps] = await Promise.all([
+    threeYearForecast({ ownerRepId, channel }),
     prisma.deal.findMany({
       where: { status: "OPEN", expectedCloseDate: { not: null } },
       include: { account: true, forecastPeriods: { select: { totalRevenue: true } } },
@@ -39,13 +55,19 @@ export default async function FinancePage() {
       take: 6,
     }),
     prisma.offer.findMany({ where: { status: "APPROVED" }, select: { total: true, updatedAt: true } }),
+    prisma.user.findMany({ where: { role: "REP" }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
   ]);
 
   const { quarters, totals } = forecast;
   const gmPct = totals.totalRevenue > 0 ? (totals.grossMargin / totals.totalRevenue) * 100 : 0;
 
   const data: FinanceScreenData = {
-    filters: { periods: ["All time"], selectedPeriod: "All time" },
+    filters: {
+      channels: ["DIRECT", "RESELLER"],
+      selectedChannel: channel ?? "",
+      owners: reps,
+      selectedOwner: ownerRepId ?? "",
+    },
     kpis: {
       deviceRevenue: totals.deviceRevenue,
       serviceRevenue: totals.serviceRevenue,
@@ -72,5 +94,14 @@ export default async function FinancePage() {
     arAging: bucketAging(approvedOffers),
   };
 
-  return <FinanceScreen data={data} />;
+  return (
+    <div>
+      <div className="px-6 pt-6 lg:px-8">
+        <Suspense fallback={<ForecastNarrativeSkeleton />}>
+          <ForecastNarrativeCard />
+        </Suspense>
+      </div>
+      <FinanceScreen data={data} />
+    </div>
+  );
 }

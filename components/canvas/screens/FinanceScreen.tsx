@@ -7,10 +7,10 @@ import { fmt } from "@/lib/canvas/format";
 
 export interface FinanceScreenData {
   filters: {
-    periods: string[];
-    selectedPeriod?: string;
-    regions?: string[];
-    selectedRegion?: string;
+    channels: string[];
+    selectedChannel?: string;
+    owners: { id: string; name: string }[];
+    selectedOwner?: string;
   };
   kpis: {
     deviceRevenue: number;
@@ -38,15 +38,15 @@ export function FinanceScreen({ data }: { data: FinanceScreenData }) {
         action={
           <div className="flex items-center gap-2">
             <form action="/finance" method="get" className="flex items-center gap-2">
-              <Select name="period" defaultValue={data.filters.selectedPeriod}>
-                {data.filters.periods.map((p) => <option key={p} value={p}>{p}</option>)}
+              <Select name="channel" defaultValue={data.filters.selectedChannel} aria-label="Channel">
+                <option value="">All channels</option>
+                {data.filters.channels.map((c) => <option key={c} value={c}>{c === "DIRECT" ? "Direct" : c === "RESELLER" ? "Reseller" : c}</option>)}
               </Select>
-              {data.filters.regions && (
-                <Select name="region" defaultValue={data.filters.selectedRegion}>
-                  <option value="">All regions</option>
-                  {data.filters.regions.map((r) => <option key={r} value={r}>{r}</option>)}
-                </Select>
-              )}
+              <Select name="owner" defaultValue={data.filters.selectedOwner} aria-label="Owner">
+                <option value="">All owners</option>
+                {data.filters.owners.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+              </Select>
+              <button type="submit" className="rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-accent">Apply</button>
             </form>
             <a href="/api/export/forecast" className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs"><Download className="h-3.5 w-3.5" /> Export forecast CSV</a>
             <a href="/api/export/cases" className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs"><Download className="h-3.5 w-3.5" /> Export cases CSV</a>
