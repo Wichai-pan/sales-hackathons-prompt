@@ -1,8 +1,9 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { ArrowLeft, Sparkles, AlertTriangle, TrendingUp, Plus, Mail, Phone, Calendar, MessageCircle } from "lucide-react";
 import { AIChip, Avatar, GlassCard, HealthRing } from "@/components/canvas/primitives";
 import { Badge } from "@/components/canvas/ui/badge";
-import type { Account, Contact, Deal, Case, Offer, ActivityEvent, DecisionRole } from "@/lib/canvas/types";
+import type { Account, Contact, Deal, Case, Offer, ActivityEvent, DecisionRole, ServerAction } from "@/lib/canvas/types";
 import { fmt, initials, fmtDate } from "@/lib/canvas/format";
 
 export interface Account360Data {
@@ -13,8 +14,12 @@ export interface Account360Data {
   activity: ActivityEvent[];
   notes: { id: string; body: string; authorName: string; createdAt: string }[];
   contacts: Contact[];
-  /** AI Next Best Action card. */
+  /** Drop-in node for the streamed AI Next Best Action (the real <NbaPanel/> hero). */
+  nbaSlot?: ReactNode;
+  /** Fallback static AI Next Best Action card (used only when nbaSlot is absent). */
   nextBestAction?: { title: string; body: string };
+  /** Server action for the add-note form (FormData: accountId, body). */
+  addNoteAction?: ServerAction;
   insights?: { tone: "primary" | "warning" | "info"; title: string; body: string }[];
 }
 
@@ -31,8 +36,8 @@ export function Account360Screen({ data }: { data: Account360Data }) {
   const a = data.account;
   return (
     <div className="p-6 lg:p-8 space-y-6">
-      <Link href="/accounts" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="h-3 w-3" /> All accounts
+      <Link href="/rep" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+        <ArrowLeft className="h-3 w-3" /> Back to dashboard
       </Link>
 
       <GlassCard className="flex flex-wrap items-center gap-6 p-6">
@@ -156,7 +161,20 @@ export function Account360Screen({ data }: { data: Account360Data }) {
           {/* Notes */}
           <GlassCard className="p-0">
             <div className="border-b border-border px-5 py-3 font-medium text-sm">Notes</div>
+            {data.addNoteAction && (
+              <form action={data.addNoteAction} className="flex gap-2 border-b border-border p-4">
+                <input type="hidden" name="accountId" value={a.id} />
+                <input
+                  name="body"
+                  placeholder="Add a note…"
+                  required
+                  className="flex-1 rounded-lg border border-border bg-background/50 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                />
+                <button type="submit" className="rounded-lg ai-gradient px-4 py-2 text-xs font-medium text-white">Add</button>
+              </form>
+            )}
             <div className="divide-y divide-border">
+              {data.notes.length === 0 && <div className="px-5 py-6 text-xs text-muted-foreground">No notes yet.</div>}
               {data.notes.map((n) => (
                 <div key={n.id} className="px-5 py-3">
                   <div className="text-sm">{n.body}</div>
@@ -169,7 +187,8 @@ export function Account360Screen({ data }: { data: Account360Data }) {
 
         {/* Right rail */}
         <aside className="space-y-4">
-          {data.nextBestAction && (
+          {data.nbaSlot}
+          {!data.nbaSlot && data.nextBestAction && (
             <GlassCard className="p-0">
               <div className="flex items-center gap-2 border-b border-border px-5 py-3">
                 <div className="grid h-7 w-7 place-items-center rounded-lg ai-gradient"><Sparkles className="h-3.5 w-3.5 text-white" /></div>
