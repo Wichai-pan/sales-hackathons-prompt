@@ -84,7 +84,7 @@ export default async function CatalogPage({
   const retiredServiceCount = services.filter((s) => s.status === "RETIRED").length;
 
   return (
-    <main>
+    <>
       {/* Single source of truth: one editable Products table + one Services table, each
           with an inline Add row. (Previously the read-only CatalogScreen tables were
           rendered ABOVE these, duplicating every product/service — removed.) */}
@@ -209,7 +209,7 @@ export default async function CatalogPage({
           </div>
         </div>
       </div>
-    </main>
+    </>
   );
 }
 

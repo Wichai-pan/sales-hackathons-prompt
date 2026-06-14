@@ -28,7 +28,7 @@ export default async function NewOfferPage({
   if (!account) notFound();
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-8">
+    <div className="mx-auto max-w-4xl px-4 py-8">
       <Link href={`/accounts/${account.id}`} className="text-sm text-muted-foreground hover:underline">
         ← {account.name}
       </Link>
@@ -46,6 +46,6 @@ export default async function NewOfferPage({
           meta: `${s.providerType === "THIRD_PARTY" ? "3rd-party" : "internal"} · ${INVOICING_LABEL[s.invoicingModel] ?? s.invoicingModel}`,
         }))}
       />
-    </main>
+    </div>
   );
 }

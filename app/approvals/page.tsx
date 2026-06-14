@@ -27,7 +27,7 @@ export default async function ApprovalsPage() {
   // Roles without a queue keep the existing read-only note (no canvas screen for them).
   if (!queueStatus || (role !== "SALES_MANAGER" && role !== "FINANCE")) {
     return (
-      <main className="space-y-6">
+      <div className="space-y-6">
         <section>
           <h1 className="text-2xl font-semibold">Approvals</h1>
           <p className="mt-1 text-sm text-muted-foreground">Offer approval queue.</p>
@@ -42,7 +42,7 @@ export default async function ApprovalsPage() {
             .
           </CardContent>
         </Card>
-      </main>
+      </div>
     );
   }
 

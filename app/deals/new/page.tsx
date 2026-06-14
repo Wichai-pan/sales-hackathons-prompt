@@ -16,12 +16,12 @@ export default async function NewDealPage({
   if (!account) notFound();
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8">
+    <div className="mx-auto max-w-3xl px-4 py-8">
       <Link href={`/accounts/${account.id}`} className="text-sm text-muted-foreground hover:underline">
         ← {account.name}
       </Link>
       <h1 className="mt-1 mb-6 text-2xl font-semibold">New deal</h1>
       <DealForm accountId={account.id} accountName={account.name} />
-    </main>
+    </div>
   );
 }
