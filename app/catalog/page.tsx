@@ -22,14 +22,7 @@ import { allProducts, allServices } from "@/lib/catalog";
 import { formatEUR } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  CatalogScreen,
-  type CatalogScreenData,
-} from "@/components/canvas/screens/CatalogScreen";
-import type {
-  Product as CanvasProduct,
-  Service as CanvasService,
-} from "@/lib/canvas/types";
+import { SectionHeader } from "@/components/canvas/primitives";
 import {
   createProduct,
   createService,
@@ -56,34 +49,6 @@ const INVOICING_LABEL: Record<InvoicingModel, string> = {
 
 const inputCls =
   "h-8 w-full rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
-
-// Prisma stores gmPercent as a fraction 0..1; the canvas Product/Service type
-// expects a 0..100 percent (screen renders gmPercent.toFixed(1)%).
-function toCanvasProduct(p: PrismaProduct): CanvasProduct {
-  return {
-    id: p.id,
-    sku: p.sku,
-    name: p.name,
-    category: p.category,
-    unitPrice: p.unitPrice,
-    gmPercent: p.gmPercent * 100,
-    currency: p.currency,
-    status: p.status,
-  };
-}
-
-function toCanvasService(s: PrismaService): CanvasService {
-  return {
-    id: s.id,
-    name: s.name,
-    providerType: s.providerType,
-    invoicingModel: s.invoicingModel,
-    basePrice: s.basePrice,
-    gmPercent: s.gmPercent * 100,
-    currency: s.currency,
-    status: s.status,
-  };
-}
 
 function StatusBadge({ status }: { status: PrismaProduct["status"] }) {
   return status === "RETIRED" ? (
@@ -118,23 +83,14 @@ export default async function CatalogPage({
   const retiredProductCount = products.filter((p) => p.status === "RETIRED").length;
   const retiredServiceCount = services.filter((s) => s.status === "RETIRED").length;
 
-  // Read-only presentation (tables + inline Add forms) goes through the canvas screen.
-  // createProduct/createService already match the ServerAction (FormData)=>void slot
-  // shape, so they wire directly; the screen's extra gmPercent/status inputs are
-  // harmlessly ignored by our actions (gmPercent defaults in Prisma).
-  const screenData: CatalogScreenData = {
-    products: visibleProducts.map(toCanvasProduct),
-    services: visibleServices.map(toCanvasService),
-    saveProductAction: createProduct,
-    saveServiceAction: createService,
-  };
-
   return (
     <main>
-      <CatalogScreen data={screenData} />
+      {/* Single source of truth: one editable Products table + one Services table, each
+          with an inline Add row. (Previously the read-only CatalogScreen tables were
+          rendered ABOVE these, duplicating every product/service — removed.) */}
+      <div className="p-6 lg:p-8 space-y-6">
+        <SectionHeader title="Catalog" subtitle="Products & services available to quote — Finance-managed" />
 
-      {/* ---------- KEPT wired forms (no canvas slot): toggle + edit/retire/reactivate ---------- */}
-      <div className="p-6 lg:p-8 pt-0 space-y-6">
         <section className="flex items-center justify-between gap-4">
           <p className="text-sm text-muted-foreground">
             Finance-owned management — retiring an item hides it from new offers but
@@ -182,6 +138,18 @@ export default async function CatalogPage({
                 {visibleProducts.map((p) => (
                   <ProductRow key={p.id} product={p} />
                 ))}
+                <tr className="bg-secondary/20">
+                  <td colSpan={7} className="px-5 py-3">
+                    <form action={createProduct} className="flex flex-wrap items-end gap-2">
+                      <input name="sku" placeholder="SKU" required className={`${inputCls} w-28`} />
+                      <input name="name" placeholder="Name" required className={`${inputCls} flex-1 min-w-[8rem]`} />
+                      <input name="category" placeholder="Category" required className={`${inputCls} w-32`} />
+                      <input name="unitPrice" type="number" min="0" step="0.01" placeholder="Price" required className={`${inputCls} w-24`} />
+                      <input name="currency" defaultValue="EUR" className={`${inputCls} w-16`} />
+                      <Button type="submit" size="sm">Add product</Button>
+                    </form>
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -217,6 +185,25 @@ export default async function CatalogPage({
                 {visibleServices.map((s) => (
                   <ServiceRow key={s.id} service={s} />
                 ))}
+                <tr className="bg-secondary/20">
+                  <td colSpan={7} className="px-5 py-3">
+                    <form action={createService} className="flex flex-wrap items-end gap-2">
+                      <input name="name" placeholder="Name" required className={`${inputCls} flex-1 min-w-[8rem]`} />
+                      <select name="providerType" defaultValue="INTERNAL" className={`${inputCls} w-32`}>
+                        <option value="INTERNAL">Internal</option>
+                        <option value="THIRD_PARTY">3rd-party</option>
+                      </select>
+                      <select name="invoicingModel" defaultValue="ONE_OFF" className={`${inputCls} w-40`}>
+                        <option value="ONE_OFF">One-off</option>
+                        <option value="FIXED_TERM">Fixed term</option>
+                        <option value="MONTHLY_RECURRING">Monthly recurring</option>
+                      </select>
+                      <input name="basePrice" type="number" min="0" step="0.01" placeholder="Price" required className={`${inputCls} w-24`} />
+                      <input name="currency" defaultValue="EUR" className={`${inputCls} w-16`} />
+                      <Button type="submit" size="sm">Add service</Button>
+                    </form>
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
